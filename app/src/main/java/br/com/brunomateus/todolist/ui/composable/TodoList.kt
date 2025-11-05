@@ -92,7 +92,7 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
                 }
             }
             IconButton(
-                onClick = {},
+                onClick = { isToggled = !isToggled },
             ) {
                 Icon(
                     imageVector = if (isToggled) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
