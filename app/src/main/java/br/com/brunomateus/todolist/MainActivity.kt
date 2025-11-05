@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -60,7 +63,8 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoTopBar() {
+fun TodoTopBar(isFiltered: Boolean, onFilterChange: (Boolean) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.background,
@@ -73,11 +77,32 @@ fun TodoTopBar() {
             )
         },
         actions = {
-            IconButton(onClick = { /* do something */ }) {
-                Icon(
-                    imageVector = Icons.Default.MoreVert,
-                    contentDescription = stringResource(R.string.visualization_options)
-                )
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = stringResource(R.string.visualization_options)
+                    )
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("Todas as tarefas") },
+                        onClick = {
+                            onFilterChange(false)
+                            expanded = false
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Somente não concluídas") },
+                        onClick = {
+                            onFilterChange(true)
+                            expanded = false
+                        }
+                    )
+                }
             }
         },
     )
@@ -96,6 +121,7 @@ fun TodoFloatActionButton(onClick: () -> Unit) {
 fun TodoMainScreen(modifier: Modifier = Modifier) {
 
     var showDialog by remember { mutableStateOf(false) }
+    var isFiltered by remember { mutableStateOf(false) }
 
     val tasks = remember {
         mutableStateListOf(
@@ -106,7 +132,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         )
     }
     Scaffold(
-        topBar = { TodoTopBar() },
+        topBar = { TodoTopBar(isFiltered, onFilterChange = { isFiltered = it }) },
         floatingActionButton = {
             TodoFloatActionButton(onClick = {
                 showDialog = true
@@ -114,11 +140,14 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
+        val filteredTasks = if (isFiltered) tasks.filter { !it.isCompleted } else tasks
         TodoList(
-            tasks = tasks,
+            tasks = filteredTasks,
             onTaskCompleted = { task, isCompleted ->
                 val index = tasks.indexOf(task)
-                tasks[index] = task.copy(isCompleted = isCompleted)
+                if (index != -1) {
+                    tasks[index] = task.copy(isCompleted = isCompleted)
+                }
             },
             onDeleteTask = { task -> tasks.remove(task) },
             modifier = modifier.padding(innerPadding)
