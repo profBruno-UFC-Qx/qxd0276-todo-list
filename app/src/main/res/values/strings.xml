@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Todolist</string>
+    <string name="todo_header">Minhas tarefas</string>
+    <string name="visualization_options">Visualization options</string>
 </resources>

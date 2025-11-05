@@ -39,13 +39,7 @@ import br.com.brunomateus.todolist.model.Task
 
 
 @Composable
-fun TodoList(modifier: Modifier = Modifier) {
-    val tasks = listOf<Task>(
-        Task("Teste 1", Category.SAUDE),
-        Task("Teste 2", Category.ESTUDO),
-        Task("Teste 3", Category.LAZER),
-        Task("Teste 4", Category.TRABALHO)
-    )
+fun TodoList(tasks: List<Task>, modifier: Modifier = Modifier) {
     LazyColumn (
         modifier = modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()
     ) {
@@ -112,7 +106,13 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
 @Preview
 @Composable
 fun PreviewTodoList() {
-    TodoList()
+    val tasks = listOf<Task>(
+        Task("Teste 1", Category.SAUDE),
+        Task("Teste 2", Category.ESTUDO),
+        Task("Teste 3", Category.LAZER),
+        Task("Teste 4", Category.TRABALHO)
+    )
+    TodoList(tasks)
 }
 
 @Preview
