@@ -4,13 +4,17 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
@@ -20,6 +24,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -117,11 +122,35 @@ fun TodoFloatActionButton(onClick: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CategoryFilter(
+    selectedCategories: Set<Category>,
+    onCategorySelected: (Category) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier.padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp)
+    ) {
+        items(Category.values()) { category ->
+            FilterChip(
+                selected = category in selectedCategories,
+                onClick = { onCategorySelected(category) },
+                label = { Text(category.getName()) }
+            )
+        }
+    }
+}
+
+
 @Composable
 fun TodoMainScreen(modifier: Modifier = Modifier) {
 
     var showDialog by remember { mutableStateOf(false) }
     var isFiltered by remember { mutableStateOf(false) }
+    var selectedCategories by remember { mutableStateOf(emptySet<Category>()) }
 
     val tasks = remember {
         mutableStateListOf(
@@ -140,18 +169,34 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        val filteredTasks = if (isFiltered) tasks.filter { !it.isCompleted } else tasks
-        TodoList(
-            tasks = filteredTasks,
-            onTaskCompleted = { task, isCompleted ->
-                val index = tasks.indexOf(task)
-                if (index != -1) {
-                    tasks[index] = task.copy(isCompleted = isCompleted)
+        Column(modifier = Modifier.padding(innerPadding)) {
+            CategoryFilter(
+                selectedCategories = selectedCategories,
+                onCategorySelected = { category ->
+                    selectedCategories = if (category in selectedCategories) {
+                        selectedCategories - category
+                    } else {
+                        selectedCategories + category
+                    }
                 }
-            },
-            onDeleteTask = { task -> tasks.remove(task) },
-            modifier = modifier.padding(innerPadding)
-        )
+            )
+            val filteredTasks = tasks.filter { task ->
+                val completionFilter = !isFiltered || !task.isCompleted
+                val categoryFilter = selectedCategories.isEmpty() || task.category in selectedCategories
+                completionFilter && categoryFilter
+            }
+            TodoList(
+                tasks = filteredTasks,
+                onTaskCompleted = { task, isCompleted ->
+                    val index = tasks.indexOf(task)
+                    if (index != -1) {
+                        tasks[index] = task.copy(isCompleted = isCompleted)
+                    }
+                },
+                onDeleteTask = { task -> tasks.remove(task) },
+                modifier = modifier
+            )
+        }
     }
 
     if (showDialog) {
