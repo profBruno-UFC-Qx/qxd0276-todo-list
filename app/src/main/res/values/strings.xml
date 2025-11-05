@@ -2,4 +2,8 @@
     <string name="app_name">Todolist</string>
     <string name="todo_header">Minhas tarefas</string>
     <string name="visualization_options">Visualization options</string>
+    <string name="add_a_new_task_button">Add a new task button.</string>
+    <string name="add_a_new_task">Adicione uma nova tarefa</string>
+    <string name="add_task_field_label">Digite a tarefa</string>
+    <string name="add_task_field_placeholder">Descrição</string>
 </resources>
