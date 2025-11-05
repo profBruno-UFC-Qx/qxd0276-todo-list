@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxColors
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -30,8 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.brunomateus.todolist.model.Category
@@ -40,8 +38,10 @@ import br.com.brunomateus.todolist.model.Task
 
 @Composable
 fun TodoList(tasks: List<Task>, modifier: Modifier = Modifier) {
-    LazyColumn (
-        modifier = modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()
+    LazyColumn(
+        modifier = modifier
+            .background(MaterialTheme.colorScheme.background)
+            .fillMaxSize()
     ) {
         items(tasks) { task ->
             TodoListItem(task, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
@@ -52,6 +52,7 @@ fun TodoList(tasks: List<Task>, modifier: Modifier = Modifier) {
 @Composable
 fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
     var isToggled by remember { mutableStateOf(false) }
+    var isCompleted by remember { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -68,19 +69,20 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
-                    checked = false,
-                    onCheckedChange = { },
+                    checked = isCompleted,
+                    onCheckedChange = { isCompleted = it },
                     colors = CheckboxDefaults.colors(
                         uncheckedColor = task.category.color,
                         checkedColor = task.category.color
                     )
                 )
-                Column (
+                Column(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
                         text = task.description,
-                        style = MaterialTheme.typography.bodyMedium
+                        style = MaterialTheme.typography.bodyMedium,
+                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     )
                     Text(
                         text = "#${task.category.getName()}",

@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -115,7 +116,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         TodoList(tasks = tasks, modifier = modifier.padding(innerPadding))
     }
 
-    if (showDialog) {
+    AnimatedVisibility(showDialog) {
         AddTaskDialog(
             onDismissRequest = { showDialog = false },
             onTaskAdd = { task ->
@@ -132,7 +133,7 @@ fun AddTaskDialog(
     onDismissRequest: () -> Unit,
     onTaskAdd: (Task) -> Unit,
     modifier: Modifier = Modifier) {
-    
+
     val options = Category.values().toList()
     val (selectedOption, onOptionSelected) = remember { mutableStateOf(options[0]) }
     var text by remember { mutableStateOf("") }
@@ -186,7 +187,7 @@ fun AddTaskDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                onClick = { onTaskAdd(Task(text, selectedOption)) },
+                onClick = { onTaskAdd(Task(text.trim(), selectedOption)) },
                 enabled = text.trim().isNotBlank()
             ) {
                 Text(stringResource(R.string.add_task_button_text))
