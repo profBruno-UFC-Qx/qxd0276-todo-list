@@ -34,6 +34,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,7 +51,6 @@ import java.util.UUID
 fun TodoList(
     tasks: List<Task>,
     listState: LazyListState,
-    inSelectionMode: Boolean,
     selectedTaskIds: Set<UUID>,
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
@@ -92,11 +92,11 @@ fun TodoList(
 
             SwipeToDismissBox(
                 state = dismissState,
-                modifier = Modifier.animateItemPlacement(tween(250)),
+                modifier = Modifier.animateItem(tween(250)),
                 backgroundContent = {
                     val color = when (dismissState.targetValue) {
                         SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
-                        SwipeToDismissBoxValue.StartToEnd -> Color.Green.copy(alpha = 0.8f)
+                        SwipeToDismissBoxValue.StartToEnd -> task.category.color
                         else -> colorScheme.background
                     }
                     val icon = when (dismissState.targetValue) {
@@ -206,7 +206,7 @@ fun PreviewTodoList() {
         Task("Teste 3", Category.LAZER),
         Task("Teste 4", Category.TRABALHO)
     )
-    // TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
+     //TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
 }
 
 @Preview

@@ -1,9 +1,11 @@
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -77,7 +80,6 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoTopBar(
-    isFiltered: Boolean,
     onFilterChange: (Boolean) -> Unit,
     inSelectionMode: Boolean,
     selectedCount: Int,
@@ -166,13 +168,38 @@ fun CategoryFilter(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(horizontal = 16.dp)
     ) {
-        items(Category.values()) { category ->
+        items(Category.entries) { category ->
             FilterChip(
                 selected = category in selectedCategories,
                 onClick = { onCategorySelected(category) },
                 label = { Text(category.getName()) }
             )
         }
+    }
+}
+
+@Composable
+fun TaskProgressBar(completedTasks: Int, totalTasks: Int, modifier: Modifier = Modifier) {
+    val progressTarget = if (totalTasks > 0) completedTasks.toFloat() / totalTasks.toFloat() else 0f
+    val animatedProgress by animateFloatAsState(
+        targetValue = progressTarget,
+        label = "progressAnimation"
+    )
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        LinearProgressIndicator(
+            progress = { animatedProgress },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Text(
+            text = "$completedTasks de $totalTasks tarefas concluídas",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 4.dp)
+        )
     }
 }
 
@@ -202,13 +229,28 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             Task("Teste 1", Category.SAUDE),
             Task("Teste 2", Category.ESTUDO),
             Task("Teste 3", Category.LAZER),
-            Task("Teste 4", Category.TRABALHO)
+            Task("Teste 4", Category.TRABALHO),
+            Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO),
+            Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO),Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO),
+
         )
     }
+
+    val completedTasks = tasks.count { it.isCompleted }
+    val totalTasks = tasks.size
+
     Scaffold(
         topBar = {
             TodoTopBar(
-                isFiltered = isFiltered,
                 onFilterChange = { isFiltered = it },
                 inSelectionMode = inSelectionMode,
                 selectedCount = selectedTaskIds.size,
@@ -218,6 +260,11 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                     selectedTaskIds = emptySet()
                 }
             )
+        },
+        bottomBar = {
+            if (!inSelectionMode) {
+                TaskProgressBar(completedTasks = completedTasks, totalTasks = totalTasks)
+            }
         },
         floatingActionButton = {
             Column(horizontalAlignment = Alignment.End) {
@@ -263,7 +310,6 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             TodoList(
                 tasks = filteredTasks,
                 listState = listState,
-                inSelectionMode = inSelectionMode,
                 selectedTaskIds = selectedTaskIds,
                 onTaskClick = { task ->
                     if (inSelectionMode) {
@@ -311,7 +357,7 @@ fun AddTaskDialog(
     onTaskAdd: (Task) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val options = Category.values().toList()
+    val options = Category.entries.toList()
     val (selectedOption, onOptionSelected) = remember { mutableStateOf(options[0]) }
     var text by remember { mutableStateOf("") }
 
