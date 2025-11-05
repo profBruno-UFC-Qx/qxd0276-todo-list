@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -25,6 +26,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MaterialTheme.colorScheme
+import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -46,6 +49,7 @@ import java.util.UUID
 @Composable
 fun TodoList(
     tasks: List<Task>,
+    listState: LazyListState,
     inSelectionMode: Boolean,
     selectedTaskIds: Set<UUID>,
     onTaskClick: (Task) -> Unit,
@@ -55,8 +59,9 @@ fun TodoList(
     modifier: Modifier = Modifier
 ) {
     LazyColumn(
+        state = listState,
         modifier = modifier
-            .background(MaterialTheme.colorScheme.background)
+            .background(colorScheme.background)
             .fillMaxSize()
     ) {
         items(tasks, key = { it.id }) { task ->
@@ -92,7 +97,7 @@ fun TodoList(
                     val color = when (dismissState.targetValue) {
                         SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
                         SwipeToDismissBoxValue.StartToEnd -> Color.Green.copy(alpha = 0.8f)
-                        else -> MaterialTheme.colorScheme.background
+                        else -> colorScheme.background
                     }
                     val icon = when (dismissState.targetValue) {
                         SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
@@ -140,7 +145,7 @@ fun TodoListItem(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(5.dp),
         modifier = modifier
@@ -171,20 +176,20 @@ fun TodoListItem(
                 ) {
                     Text(
                         text = task.description,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = typography.bodyLarge,
                         textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     )
                     Text(
                         text = "#${task.category.getName()}",
                         color = Color.Gray,
-                        style = MaterialTheme.typography.bodySmall
+                        style = typography.bodySmall
                     )
                 }
             }
             IconButton(onClick = onDeleteTask) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    tint = MaterialTheme.colorScheme.secondary,
+                    tint = colorScheme.secondary,
                     contentDescription = "Delete task button"
                 )
             }
@@ -201,7 +206,7 @@ fun PreviewTodoList() {
         Task("Teste 3", Category.LAZER),
         Task("Teste 4", Category.TRABALHO)
     )
-    TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
+    // TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
 }
 
 @Preview

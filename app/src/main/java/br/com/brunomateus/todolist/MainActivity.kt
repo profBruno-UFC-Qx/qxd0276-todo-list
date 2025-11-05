@@ -15,12 +15,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -39,10 +41,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -55,6 +59,7 @@ import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 class MainActivity : ComponentActivity() {
@@ -72,7 +77,7 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoTopBar(
-    isFiltered: Boolean, 
+    isFiltered: Boolean,
     onFilterChange: (Boolean) -> Unit,
     inSelectionMode: Boolean,
     selectedCount: Int,
@@ -180,10 +185,20 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
     var selectedCategories by remember { mutableStateOf(emptySet<Category>()) }
     var selectedTaskIds by remember { mutableStateOf<Set<UUID>>(emptySet()) }
     val inSelectionMode = selectedTaskIds.isNotEmpty()
-
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+    val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
     val tasks = remember {
         mutableStateListOf(
+            Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO),
+            Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO),
             Task("Teste 1", Category.SAUDE),
             Task("Teste 2", Category.ESTUDO),
             Task("Teste 3", Category.LAZER),
@@ -191,9 +206,9 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         )
     }
     Scaffold(
-        topBar = { 
+        topBar = {
             TodoTopBar(
-                isFiltered = isFiltered, 
+                isFiltered = isFiltered,
                 onFilterChange = { isFiltered = it },
                 inSelectionMode = inSelectionMode,
                 selectedCount = selectedTaskIds.size,
@@ -205,10 +220,24 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             )
         },
         floatingActionButton = {
-            if (!inSelectionMode) {
-                TodoFloatActionButton(onClick = {
-                    showDialog = true
-                })
+            Column(horizontalAlignment = Alignment.End) {
+                if (showScrollToTopButton) {
+                    FloatingActionButton(
+                        onClick = {
+                            scope.launch {
+                                listState.animateScrollToItem(0)
+                            }
+                        },
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        Icon(Icons.Default.KeyboardArrowUp, contentDescription = "Ir para o topo")
+                    }
+                }
+                if (!inSelectionMode) {
+                    TodoFloatActionButton(onClick = {
+                        showDialog = true
+                    })
+                }
             }
         },
         modifier = Modifier.fillMaxSize()
@@ -233,6 +262,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             }
             TodoList(
                 tasks = filteredTasks,
+                listState = listState,
                 inSelectionMode = inSelectionMode,
                 selectedTaskIds = selectedTaskIds,
                 onTaskClick = { task ->
@@ -246,7 +276,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                         // Handle regular click here if needed
                     }
                 },
-                onTaskLongClick = { task -> 
+                onTaskLongClick = { task ->
                     if (!inSelectionMode) {
                         selectedTaskIds = setOf(task.id)
                     }
