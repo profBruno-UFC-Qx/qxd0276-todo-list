@@ -1,6 +1,7 @@
 package br.com.brunomateus.todolist.model
 
 import androidx.compose.ui.graphics.Color
+import java.util.UUID
 
 enum class Category(val color: Color) {
     ESTUDO(Color.Red) {
@@ -15,4 +16,9 @@ enum class Category(val color: Color) {
     abstract fun getName(): String
 }
 
-data class Task(val description: String, val category: Category)
+data class Task(
+    val description: String, 
+    val category: Category,
+    val id: UUID = UUID.randomUUID(),
+    var isCompleted: Boolean = false
+)

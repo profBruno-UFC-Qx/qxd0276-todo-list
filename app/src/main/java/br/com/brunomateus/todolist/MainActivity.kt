@@ -4,7 +4,6 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -98,12 +97,14 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
 
     var showDialog by remember { mutableStateOf(false) }
 
-    val tasks = remember { mutableStateListOf<Task>(
-        Task("Teste 1", Category.SAUDE),
-        Task("Teste 2", Category.ESTUDO),
-        Task("Teste 3", Category.LAZER),
-        Task("Teste 4", Category.TRABALHO)
-    )}
+    val tasks = remember {
+        mutableStateListOf(
+            Task("Teste 1", Category.SAUDE),
+            Task("Teste 2", Category.ESTUDO),
+            Task("Teste 3", Category.LAZER),
+            Task("Teste 4", Category.TRABALHO)
+        )
+    }
     Scaffold(
         topBar = { TodoTopBar() },
         floatingActionButton = {
@@ -113,10 +114,18 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
-        TodoList(tasks = tasks, modifier = modifier.padding(innerPadding))
+        TodoList(
+            tasks = tasks,
+            onTaskCompleted = { task, isCompleted ->
+                val index = tasks.indexOf(task)
+                tasks[index] = task.copy(isCompleted = isCompleted)
+            },
+            onDeleteTask = { task -> tasks.remove(task) },
+            modifier = modifier.padding(innerPadding)
+        )
     }
 
-    AnimatedVisibility(showDialog) {
+    if (showDialog) {
         AddTaskDialog(
             onDismissRequest = { showDialog = false },
             onTaskAdd = { task ->
@@ -132,8 +141,8 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
 fun AddTaskDialog(
     onDismissRequest: () -> Unit,
     onTaskAdd: (Task) -> Unit,
-    modifier: Modifier = Modifier) {
-
+    modifier: Modifier = Modifier
+) {
     val options = Category.values().toList()
     val (selectedOption, onOptionSelected) = remember { mutableStateOf(options[0]) }
     var text by remember { mutableStateOf("") }
@@ -157,47 +166,46 @@ fun AddTaskDialog(
                     )
                 }
                 Column(modifier.selectableGroup()) {
-                        options.forEach { category ->
-                            Row(
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(56.dp)
-                                    .selectable(
-                                        selected = (category == selectedOption),
-                                        onClick = { onOptionSelected(category) },
-                                        role = Role.RadioButton
-                                    )
-                                    .padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                RadioButton(
+                    options.forEach { category ->
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .height(56.dp)
+                                .selectable(
                                     selected = (category == selectedOption),
-                                    onClick = null // null recommended for accessibility with screen readers
+                                    onClick = { onOptionSelected(category) },
+                                    role = Role.RadioButton
                                 )
-                                Text(
-                                    text = category.getName(),
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(start = 16.dp)
-                                )
-                            }
+                                .padding(horizontal = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = (category == selectedOption),
+                                onClick = null // null recommended for accessibility with screen readers
+                            )
+                            Text(
+                                text = category.getName(),
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.padding(start = 16.dp)
+                            )
                         }
                     }
+                }
             }
         },
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                onClick = { onTaskAdd(Task(text.trim(), selectedOption)) },
-                enabled = text.trim().isNotBlank()
+                onClick = { onTaskAdd(Task(text, selectedOption)) },
             ) {
-                Text(stringResource(R.string.add_task_button_text))
+                Text("Adicionar")
             }
         },
         dismissButton = {
             TextButton(
                 onClick = onDismissRequest
             ) {
-                Text(stringResource(R.string.dismiss_dialog_button_text))
+                Text("Cancelar")
             }
         },
         modifier = modifier

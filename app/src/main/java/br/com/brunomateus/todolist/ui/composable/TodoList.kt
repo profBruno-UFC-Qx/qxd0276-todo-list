@@ -11,8 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
@@ -22,10 +21,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,22 +32,35 @@ import br.com.brunomateus.todolist.model.Task
 
 
 @Composable
-fun TodoList(tasks: List<Task>, modifier: Modifier = Modifier) {
+fun TodoList(
+    tasks: List<Task>,
+    onTaskCompleted: (Task, Boolean) -> Unit,
+    onDeleteTask: (Task) -> Unit,
+    modifier: Modifier = Modifier
+) {
     LazyColumn(
         modifier = modifier
             .background(MaterialTheme.colorScheme.background)
             .fillMaxSize()
     ) {
-        items(tasks) { task ->
-            TodoListItem(task, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        items(tasks, key = { it.id }) { task ->
+            TodoListItem(
+                task = task,
+                onTaskCompleted = { onTaskCompleted(task, it) },
+                onDeleteTask = { onDeleteTask(task) },
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+            )
         }
     }
 }
 
 @Composable
-fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
-    var isToggled by remember { mutableStateOf(false) }
-    var isCompleted by remember { mutableStateOf(false) }
+fun TodoListItem(
+    task: Task,
+    onTaskCompleted: (Boolean) -> Unit,
+    onDeleteTask: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Card(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
@@ -69,8 +77,8 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Checkbox(
-                    checked = isCompleted,
-                    onCheckedChange = { isCompleted = it },
+                    checked = task.isCompleted,
+                    onCheckedChange = onTaskCompleted,
                     colors = CheckboxDefaults.colors(
                         uncheckedColor = task.category.color,
                         checkedColor = task.category.color
@@ -82,7 +90,7 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
                     Text(
                         text = task.description,
                         style = MaterialTheme.typography.bodyMedium,
-                        textDecoration = if (isCompleted) TextDecoration.LineThrough else TextDecoration.None
+                        textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     )
                     Text(
                         text = "#${task.category.getName()}",
@@ -91,34 +99,31 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
                     )
                 }
             }
-            IconButton(
-                onClick = { isToggled = !isToggled },
-            ) {
+            IconButton(onClick = onDeleteTask) {
                 Icon(
-                    imageVector = if (isToggled) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
-                    tint = if (isToggled) Color.Red else MaterialTheme.colorScheme.secondary,
-                    contentDescription = if (isToggled) "Selected icon button" else "Unselected icon button."
+                    imageVector = Icons.Default.Delete,
+                    tint = MaterialTheme.colorScheme.secondary,
+                    contentDescription = "Delete task button"
                 )
             }
         }
     }
-
 }
 
 @Preview
 @Composable
 fun PreviewTodoList() {
-    val tasks = listOf<Task>(
+    val tasks = listOf(
         Task("Teste 1", Category.SAUDE),
-        Task("Teste 2", Category.ESTUDO),
+        Task("Teste 2", Category.ESTUDO, isCompleted = true),
         Task("Teste 3", Category.LAZER),
         Task("Teste 4", Category.TRABALHO)
     )
-    TodoList(tasks)
+    TodoList(tasks, { _, _ -> }, {})
 }
 
 @Preview
 @Composable
 fun PreviewListItem() {
-    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE))
+    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE), {}, {})
 }
