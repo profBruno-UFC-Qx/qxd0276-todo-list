@@ -3,6 +3,7 @@ package br.com.brunomateus.todolist.ui.composable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,12 +39,17 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
+import java.util.UUID
 
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TodoList(
     tasks: List<Task>,
+    inSelectionMode: Boolean,
+    selectedTaskIds: Set<UUID>,
+    onTaskClick: (Task) -> Unit,
+    onTaskLongClick: (Task) -> Unit,
     onTaskCompleted: (Task, Boolean) -> Unit,
     onDeleteTask: (Task) -> Unit,
     modifier: Modifier = Modifier
@@ -109,6 +115,9 @@ fun TodoList(
             ) {
                 TodoListItem(
                     task = task,
+                    isSelected = task.id in selectedTaskIds,
+                    onClick = { onTaskClick(task) },
+                    onLongClick = { onTaskLongClick(task) },
                     onTaskCompleted = { onTaskCompleted(task, it) },
                     onDeleteTask = { onDeleteTask(task) },
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
@@ -118,19 +127,28 @@ fun TodoList(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TodoListItem(
     task: Task,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit,
     onTaskCompleted: (Boolean) -> Unit,
     onDeleteTask: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         ),
         shape = RoundedCornerShape(5.dp),
-        modifier = modifier.fillMaxWidth()
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -183,11 +201,11 @@ fun PreviewTodoList() {
         Task("Teste 3", Category.LAZER),
         Task("Teste 4", Category.TRABALHO)
     )
-    TodoList(tasks, { _, _ -> }, {})
+    TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
 }
 
 @Preview
 @Composable
 fun PreviewListItem() {
-    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE), {}, {})
+    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE), false, {}, {}, {}, {})
 }

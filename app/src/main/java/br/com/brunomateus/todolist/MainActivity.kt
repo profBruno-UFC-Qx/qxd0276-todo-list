@@ -19,6 +19,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -53,6 +55,7 @@ import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -68,45 +71,69 @@ class MainActivity : ComponentActivity() {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun TodoTopBar(isFiltered: Boolean, onFilterChange: (Boolean) -> Unit) {
+fun TodoTopBar(
+    isFiltered: Boolean, 
+    onFilterChange: (Boolean) -> Unit,
+    inSelectionMode: Boolean,
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = MaterialTheme.colorScheme.background,
-            titleContentColor = MaterialTheme.colorScheme.primary,
+            containerColor = if (inSelectionMode) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background,
+            titleContentColor = if (inSelectionMode) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.primary,
         ),
         title = {
-            Text(
-                text = stringResource(R.string.todo_header),
-                fontWeight = FontWeight.Bold
-            )
+            if (!inSelectionMode) {
+                Text(
+                    text = stringResource(R.string.todo_header),
+                    fontWeight = FontWeight.Bold
+                )
+            } else {
+                Text("$selectedCount selecionadas")
+            }
+        },
+        navigationIcon = {
+            if (inSelectionMode) {
+                IconButton(onClick = onClearSelection) {
+                    Icon(Icons.Default.Close, contentDescription = "Fechar modo de seleção")
+                }
+            }
         },
         actions = {
-            Box {
-                IconButton(onClick = { expanded = true }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.visualization_options)
-                    )
+            if (inSelectionMode) {
+                IconButton(onClick = onDeleteSelected) {
+                    Icon(Icons.Default.Delete, contentDescription = "Deletar tarefas selecionadas")
                 }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("Todas as tarefas") },
-                        onClick = {
-                            onFilterChange(false)
-                            expanded = false
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Somente não concluídas") },
-                        onClick = {
-                            onFilterChange(true)
-                            expanded = false
-                        }
-                    )
+            } else {
+                Box {
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(
+                            imageVector = Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.visualization_options)
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Todas as tarefas") },
+                            onClick = {
+                                onFilterChange(false)
+                                expanded = false
+                            }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Somente não concluídas") },
+                            onClick = {
+                                onFilterChange(true)
+                                expanded = false
+                            }
+                        )
+                    }
                 }
             }
         },
@@ -151,6 +178,9 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
     var showDialog by remember { mutableStateOf(false) }
     var isFiltered by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(emptySet<Category>()) }
+    var selectedTaskIds by remember { mutableStateOf<Set<UUID>>(emptySet()) }
+    val inSelectionMode = selectedTaskIds.isNotEmpty()
+
 
     val tasks = remember {
         mutableStateListOf(
@@ -161,25 +191,41 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         )
     }
     Scaffold(
-        topBar = { TodoTopBar(isFiltered, onFilterChange = { isFiltered = it }) },
+        topBar = { 
+            TodoTopBar(
+                isFiltered = isFiltered, 
+                onFilterChange = { isFiltered = it },
+                inSelectionMode = inSelectionMode,
+                selectedCount = selectedTaskIds.size,
+                onClearSelection = { selectedTaskIds = emptySet() },
+                onDeleteSelected = {
+                    tasks.removeAll { it.id in selectedTaskIds }
+                    selectedTaskIds = emptySet()
+                }
+            )
+        },
         floatingActionButton = {
-            TodoFloatActionButton(onClick = {
-                showDialog = true
-            })
+            if (!inSelectionMode) {
+                TodoFloatActionButton(onClick = {
+                    showDialog = true
+                })
+            }
         },
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            CategoryFilter(
-                selectedCategories = selectedCategories,
-                onCategorySelected = { category ->
-                    selectedCategories = if (category in selectedCategories) {
-                        selectedCategories - category
-                    } else {
-                        selectedCategories + category
+            if (!inSelectionMode) {
+                CategoryFilter(
+                    selectedCategories = selectedCategories,
+                    onCategorySelected = { category ->
+                        selectedCategories = if (category in selectedCategories) {
+                            selectedCategories - category
+                        } else {
+                            selectedCategories + category
+                        }
                     }
-                }
-            )
+                )
+            }
             val filteredTasks = tasks.filter { task ->
                 val completionFilter = !isFiltered || !task.isCompleted
                 val categoryFilter = selectedCategories.isEmpty() || task.category in selectedCategories
@@ -187,6 +233,24 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             }
             TodoList(
                 tasks = filteredTasks,
+                inSelectionMode = inSelectionMode,
+                selectedTaskIds = selectedTaskIds,
+                onTaskClick = { task ->
+                    if (inSelectionMode) {
+                        selectedTaskIds = if (task.id in selectedTaskIds) {
+                            selectedTaskIds - task.id
+                        } else {
+                            selectedTaskIds + task.id
+                        }
+                    } else {
+                        // Handle regular click here if needed
+                    }
+                },
+                onTaskLongClick = { task -> 
+                    if (!inSelectionMode) {
+                        selectedTaskIds = setOf(task.id)
+                    }
+                },
                 onTaskCompleted = { task, isCompleted ->
                     val index = tasks.indexOf(task)
                     if (index != -1) {
