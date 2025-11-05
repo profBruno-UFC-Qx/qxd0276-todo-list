@@ -1,5 +1,9 @@
 package br.com.brunomateus.todolist.ui.composable
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,6 +35,7 @@ import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun TodoList(
     tasks: List<Task>,
@@ -48,7 +53,13 @@ fun TodoList(
                 task = task,
                 onTaskCompleted = { onTaskCompleted(task, it) },
                 onDeleteTask = { onDeleteTask(task) },
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                modifier = Modifier
+                    .padding(horizontal = 10.dp, vertical = 2.dp)
+                    .animateItem(
+                        fadeInSpec = tween(durationMillis = 250),
+                        fadeOutSpec = tween(durationMillis = 100),
+                        placementSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy)
+                    )
             )
         }
     }
