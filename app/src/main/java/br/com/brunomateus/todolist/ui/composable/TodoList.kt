@@ -1,10 +1,14 @@
 package br.com.brunomateus.todolist.ui.composable
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -35,6 +39,23 @@ import br.com.brunomateus.todolist.model.Task
 
 
 @Composable
+fun TodoList(modifier: Modifier = Modifier) {
+    val tasks = listOf<Task>(
+        Task("Teste 1", Category.SAUDE),
+        Task("Teste 2", Category.ESTUDO),
+        Task("Teste 3", Category.LAZER),
+        Task("Teste 4", Category.TRABALHO)
+    )
+    LazyColumn (
+        modifier = modifier.background(MaterialTheme.colorScheme.background).fillMaxSize()
+    ) {
+        items(tasks) { task ->
+            TodoListItem(task, modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp))
+        }
+    }
+}
+
+@Composable
 fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
     var isToggled by remember { mutableStateOf(false) }
     Card(
@@ -49,7 +70,9 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
             horizontalArrangement = Arrangement.SpaceBetween,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Row {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Checkbox(
                     checked = false,
                     onCheckedChange = { },
@@ -84,6 +107,12 @@ fun TodoListItem(task: Task, modifier: Modifier = Modifier) {
         }
     }
 
+}
+
+@Preview
+@Composable
+fun PreviewTodoList() {
+    TodoList()
 }
 
 @Preview
