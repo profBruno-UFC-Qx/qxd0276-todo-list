@@ -14,4 +14,7 @@
     <string name="delete_button_description">Deletar tarefas selecionadas</string>
     <string name="close_selection_mode_button_description">Fechar modo de seleção</string>
     <string name="number_of_selected_tasks">%1$d selecionadas</string>
+    <string name="sort_z_a">Ordenar Z-A</string>
+    <string name="sort_a_z">Ordenar A-Z</string>
+    <string name="no_order">Remover ordenação</string>
 </resources>

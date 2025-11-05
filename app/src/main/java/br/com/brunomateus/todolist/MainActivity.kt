@@ -1,6 +1,7 @@
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -58,6 +59,10 @@ import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
 
+enum class SortOrder {
+    NONE, ASCENDING, DESCENDING
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,6 +80,8 @@ class MainActivity : ComponentActivity() {
 fun TodoTopBar(
     isFiltering: Boolean,
     onFilterChange: (Boolean) -> Unit,
+    sortOrder: SortOrder,
+    onSortOrderChange: (SortOrder) -> Unit,
     inSelectionMode: Boolean,
     selectedCount: Int,
     onClearSelection: () -> Unit,
@@ -139,6 +146,26 @@ fun TodoTopBar(
                                 expanded = false
                             }
                         )
+                        DropdownMenuItem(
+                            text = {
+                                val text = when (sortOrder) {
+                                    SortOrder.ASCENDING -> stringResource(R.string.sort_z_a)
+                                    SortOrder.DESCENDING -> stringResource(R.string.no_order)
+                                    else -> stringResource(R.string.sort_a_z)
+                                }
+                                Text(text)
+                            },
+                            onClick = {
+                                onSortOrderChange(
+                                    when (sortOrder) {
+                                        SortOrder.NONE -> SortOrder.ASCENDING
+                                        SortOrder.ASCENDING -> SortOrder.DESCENDING
+                                        SortOrder.DESCENDING -> SortOrder.NONE
+                                    }
+                                )
+                                expanded = false
+                            }
+                        )
                     }
                 }
             }
@@ -179,16 +206,17 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
     var isFiltered by remember { mutableStateOf(false) }
     var selectedCategories by remember { mutableStateOf(emptySet<Category>()) }
     var selectedTaskIds by remember { mutableStateOf<Set<UUID>>(emptySet()) }
+    var sortOrder by remember { mutableStateOf(SortOrder.NONE) }
     val inSelectionMode = selectedTaskIds.isNotEmpty()
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
     val tasks = rememberSaveable {
         mutableStateListOf(
-            Task("Teste 1", Category.SAUDE),
-            Task("Teste 2", Category.ESTUDO),
-            Task("Teste 3", Category.LAZER),
-            Task("Teste 4", Category.TRABALHO),
+            Task("Consulta 1", Category.SAUDE),
+            Task("Estudar Cálculo 2", Category.ESTUDO),
+            Task("Farra com os amigos", Category.LAZER),
+            Task("Reunião", Category.TRABALHO),
         )
     }
 
@@ -200,6 +228,8 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             TodoTopBar(
                 isFiltering = isFiltered,
                 onFilterChange = { isFiltered = it },
+                sortOrder = sortOrder,
+                onSortOrderChange = { sortOrder = it },
                 inSelectionMode = inSelectionMode,
                 selectedCount = selectedTaskIds.size,
                 onClearSelection = { selectedTaskIds = emptySet() },
@@ -246,6 +276,12 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                 val categoryFilter =
                     selectedCategories.isEmpty() || task.category in selectedCategories
                 completionFilter && categoryFilter
+            }.let { tasksToSort ->
+                when (sortOrder) {
+                    SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
+                    SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
+                    SortOrder.NONE -> tasksToSort
+                }
             }
             TodoList(
                 tasks = filteredTasks,
@@ -268,7 +304,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                     }
                 },
                 onTaskCompleted = { task, isCompleted ->
-                    val index = tasks.indexOf(task)
+                    val index = tasks.indexOfFirst { it.id == task.id }
                     if (index != -1) {
                         tasks[index] = task.copy(isCompleted = isCompleted)
                     }

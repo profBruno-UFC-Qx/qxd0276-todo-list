@@ -143,7 +143,7 @@ fun TodoListItem(
 ) {
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) colorScheme.primaryContainer else colorScheme.surfaceVariant
+            containerColor = if (isSelected) colorScheme.tertiaryContainer else colorScheme.primaryContainer
         ),
         shape = RoundedCornerShape(5.dp),
         modifier = modifier
