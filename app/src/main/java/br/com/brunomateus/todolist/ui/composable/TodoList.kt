@@ -1,11 +1,10 @@
 package br.com.brunomateus.todolist.ui.composable
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,16 +14,22 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SwipeToDismissBox
+import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,7 +40,7 @@ import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun TodoList(
     tasks: List<Task>,
@@ -49,18 +54,66 @@ fun TodoList(
             .fillMaxSize()
     ) {
         items(tasks, key = { it.id }) { task ->
-            TodoListItem(
-                task = task,
-                onTaskCompleted = { onTaskCompleted(task, it) },
-                onDeleteTask = { onDeleteTask(task) },
-                modifier = Modifier
-                    .padding(horizontal = 10.dp, vertical = 2.dp)
-                    .animateItem(
-                        fadeInSpec = tween(durationMillis = 250),
-                        fadeOutSpec = tween(durationMillis = 100),
-                        placementSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioMediumBouncy)
-                    )
+            val dismissState = rememberSwipeToDismissBoxState(
+                confirmValueChange = {
+                    when (it) {
+                        SwipeToDismissBoxValue.EndToStart -> {
+                            onDeleteTask(task)
+                            true
+                        }
+
+                        SwipeToDismissBoxValue.StartToEnd -> {
+                            onTaskCompleted(task, !task.isCompleted)
+                            false // Do not dismiss, just toggle
+                        }
+
+                        else -> false
+                    }
+                }
             )
+
+            // Reset the dismiss state when the swipe is not in progress
+            LaunchedEffect(dismissState.currentValue) {
+                if (dismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+                    dismissState.reset()
+                }
+            }
+
+            SwipeToDismissBox(
+                state = dismissState,
+                modifier = Modifier.animateItemPlacement(tween(250)),
+                backgroundContent = {
+                    val color = when (dismissState.targetValue) {
+                        SwipeToDismissBoxValue.EndToStart -> Color.Red.copy(alpha = 0.8f)
+                        SwipeToDismissBoxValue.StartToEnd -> Color.Green.copy(alpha = 0.8f)
+                        else -> MaterialTheme.colorScheme.background
+                    }
+                    val icon = when (dismissState.targetValue) {
+                        SwipeToDismissBoxValue.EndToStart -> Icons.Default.Delete
+                        SwipeToDismissBoxValue.StartToEnd -> Icons.Default.Check
+                        else -> null
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(color, shape = RoundedCornerShape(5.dp))
+                            .padding(horizontal = 16.dp),
+                        contentAlignment = if (dismissState.targetValue == SwipeToDismissBoxValue.EndToStart) Alignment.CenterEnd else Alignment.CenterStart
+                    ) {
+                        icon?.let {
+                            Icon(it, contentDescription = null, tint = Color.White)
+                        }
+                    }
+                }
+            ) {
+                TodoListItem(
+                    task = task,
+                    onTaskCompleted = { onTaskCompleted(task, it) },
+                    onDeleteTask = { onDeleteTask(task) },
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
+                )
+            }
         }
     }
 }
@@ -100,7 +153,7 @@ fun TodoListItem(
                 ) {
                     Text(
                         text = task.description,
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodyLarge,
                         textDecoration = if (task.isCompleted) TextDecoration.LineThrough else TextDecoration.None
                     )
                     Text(
