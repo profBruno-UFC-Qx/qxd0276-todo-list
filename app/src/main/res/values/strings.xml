@@ -8,4 +8,10 @@
     <string name="add_task_field_placeholder">Descrição</string>
     <string name="add_task_button_text">Adicionar</string>
     <string name="dismiss_dialog_button_text">Cancelar</string>
+    <string name="progress_bar_message">%1$d de %2$d tarefas concluídas</string>
+    <string name="only_todo_tasks">Somente não concluídas</string>
+    <string name="all_tasks">Todas as tarefas</string>
+    <string name="delete_button_description">Deletar tarefas selecionadas</string>
+    <string name="close_selection_mode_button_description">Fechar modo de seleção</string>
+    <string name="number_of_selected_tasks">%1$d selecionadas</string>
 </resources>

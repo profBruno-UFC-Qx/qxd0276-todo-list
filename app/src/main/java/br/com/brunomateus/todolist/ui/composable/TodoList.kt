@@ -25,7 +25,6 @@ import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.colorScheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.SwipeToDismissBox
@@ -34,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -197,17 +195,7 @@ fun TodoListItem(
     }
 }
 
-@Preview
-@Composable
-fun PreviewTodoList() {
-    val tasks = listOf(
-        Task("Teste 1", Category.SAUDE),
-        Task("Teste 2", Category.ESTUDO, isCompleted = true),
-        Task("Teste 3", Category.LAZER),
-        Task("Teste 4", Category.TRABALHO)
-    )
-     //TodoList(tasks, false, emptySet(), {}, {}, { _, _ -> }, {})
-}
+
 
 @Preview
 @Composable
