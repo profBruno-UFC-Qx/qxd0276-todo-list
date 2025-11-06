@@ -1,7 +1,6 @@
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -57,6 +56,7 @@ import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.screen.AllTasksCompletedScreen
+import br.com.brunomateus.todolist.ui.screen.NoTasksFoundScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -289,35 +289,41 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                         SortOrder.NONE -> tasksToSort
                     }
                 }
-                TodoList(
-                    tasks = filteredTasks,
-                    listState = listState,
-                    selectedTaskIds = selectedTaskIds,
-                    onTaskClick = { task ->
-                        if (inSelectionMode) {
-                            selectedTaskIds = if (task.id in selectedTaskIds) {
-                                selectedTaskIds - task.id
+
+                val filtersAreActive = selectedCategories.isNotEmpty() || isFiltered
+                if (filteredTasks.isEmpty() && filtersAreActive) {
+                    NoTasksFoundScreen()
+                } else {
+                    TodoList(
+                        tasks = filteredTasks,
+                        listState = listState,
+                        selectedTaskIds = selectedTaskIds,
+                        onTaskClick = { task ->
+                            if (inSelectionMode) {
+                                selectedTaskIds = if (task.id in selectedTaskIds) {
+                                    selectedTaskIds - task.id
+                                } else {
+                                    selectedTaskIds + task.id
+                                }
                             } else {
-                                selectedTaskIds + task.id
+                                // Handle regular click here if needed
                             }
-                        } else {
-                            // Handle regular click here if needed
-                        }
-                    },
-                    onTaskLongClick = { task ->
-                        if (!inSelectionMode) {
-                            selectedTaskIds = setOf(task.id)
-                        }
-                    },
-                    onTaskCompleted = { task, isCompleted ->
-                        val index = tasks.indexOfFirst { it.id == task.id }
-                        if (index != -1) {
-                            tasks[index] = task.copy(isCompleted = isCompleted)
-                        }
-                    },
-                    onDeleteTask = { task -> tasks.remove(task) },
-                    modifier = modifier
-                )
+                        },
+                        onTaskLongClick = { task ->
+                            if (!inSelectionMode) {
+                                selectedTaskIds = setOf(task.id)
+                            }
+                        },
+                        onTaskCompleted = { task, isCompleted ->
+                            val index = tasks.indexOfFirst { it.id == task.id }
+                            if (index != -1) {
+                                tasks[index] = task.copy(isCompleted = isCompleted)
+                            }
+                        },
+                        onDeleteTask = { task -> tasks.remove(task) },
+                        modifier = modifier
+                    )
+                }
             }
         }
     }
@@ -379,9 +385,6 @@ fun TaskProgressBar(completedTasks: Int, totalTasks: Int, modifier: Modifier = M
         )
     }
 }
-
-
-
 
 @Preview(showBackground = true)
 @Composable
