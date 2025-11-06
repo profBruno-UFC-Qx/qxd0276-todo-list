@@ -17,4 +17,6 @@
     <string name="sort_z_a">Ordenar Z-A</string>
     <string name="sort_a_z">Ordenar A-Z</string>
     <string name="no_order">Remover ordenação</string>
+    <string name="congratulations">Parabéns!</string>
+    <string name="all_tasks_completed_message">Você concluiu todas as suas tarefas.</string>
 </resources>

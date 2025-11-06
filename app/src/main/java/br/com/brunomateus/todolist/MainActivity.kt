@@ -51,10 +51,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
+import br.com.brunomateus.todolist.ui.screen.AllTasksCompletedScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -222,6 +224,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
 
     val completedTasks = tasks.count { it.isCompleted }
     val totalTasks = tasks.size
+    val allTasksCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted }
 
     Scaffold(
         topBar = {
@@ -259,59 +262,63 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            if (!inSelectionMode) {
-                CategoryFilter(
-                    selectedCategories = selectedCategories,
-                    onCategorySelected = { category ->
-                        selectedCategories = if (category in selectedCategories) {
-                            selectedCategories - category
-                        } else {
-                            selectedCategories + category
+            if (allTasksCompleted) {
+                AllTasksCompletedScreen()
+            } else {
+                if (!inSelectionMode) {
+                    CategoryFilter(
+                        selectedCategories = selectedCategories,
+                        onCategorySelected = { category ->
+                            selectedCategories = if (category in selectedCategories) {
+                                selectedCategories - category
+                            } else {
+                                selectedCategories + category
+                            }
                         }
+                    )
+                }
+                val filteredTasks = tasks.filter { task ->
+                    val completionFilter = !isFiltered || !task.isCompleted
+                    val categoryFilter =
+                        selectedCategories.isEmpty() || task.category in selectedCategories
+                    completionFilter && categoryFilter
+                }.let { tasksToSort ->
+                    when (sortOrder) {
+                        SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
+                        SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
+                        SortOrder.NONE -> tasksToSort
                     }
+                }
+                TodoList(
+                    tasks = filteredTasks,
+                    listState = listState,
+                    selectedTaskIds = selectedTaskIds,
+                    onTaskClick = { task ->
+                        if (inSelectionMode) {
+                            selectedTaskIds = if (task.id in selectedTaskIds) {
+                                selectedTaskIds - task.id
+                            } else {
+                                selectedTaskIds + task.id
+                            }
+                        } else {
+                            // Handle regular click here if needed
+                        }
+                    },
+                    onTaskLongClick = { task ->
+                        if (!inSelectionMode) {
+                            selectedTaskIds = setOf(task.id)
+                        }
+                    },
+                    onTaskCompleted = { task, isCompleted ->
+                        val index = tasks.indexOfFirst { it.id == task.id }
+                        if (index != -1) {
+                            tasks[index] = task.copy(isCompleted = isCompleted)
+                        }
+                    },
+                    onDeleteTask = { task -> tasks.remove(task) },
+                    modifier = modifier
                 )
             }
-            val filteredTasks = tasks.filter { task ->
-                val completionFilter = !isFiltered || !task.isCompleted
-                val categoryFilter =
-                    selectedCategories.isEmpty() || task.category in selectedCategories
-                completionFilter && categoryFilter
-            }.let { tasksToSort ->
-                when (sortOrder) {
-                    SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
-                    SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
-                    SortOrder.NONE -> tasksToSort
-                }
-            }
-            TodoList(
-                tasks = filteredTasks,
-                listState = listState,
-                selectedTaskIds = selectedTaskIds,
-                onTaskClick = { task ->
-                    if (inSelectionMode) {
-                        selectedTaskIds = if (task.id in selectedTaskIds) {
-                            selectedTaskIds - task.id
-                        } else {
-                            selectedTaskIds + task.id
-                        }
-                    } else {
-                        // Handle regular click here if needed
-                    }
-                },
-                onTaskLongClick = { task ->
-                    if (!inSelectionMode) {
-                        selectedTaskIds = setOf(task.id)
-                    }
-                },
-                onTaskCompleted = { task, isCompleted ->
-                    val index = tasks.indexOfFirst { it.id == task.id }
-                    if (index != -1) {
-                        tasks[index] = task.copy(isCompleted = isCompleted)
-                    }
-                },
-                onDeleteTask = { task -> tasks.remove(task) },
-                modifier = modifier
-            )
         }
     }
 
@@ -372,6 +379,8 @@ fun TaskProgressBar(completedTasks: Int, totalTasks: Int, modifier: Modifier = M
         )
     }
 }
+
+
 
 
 @Preview(showBackground = true)
