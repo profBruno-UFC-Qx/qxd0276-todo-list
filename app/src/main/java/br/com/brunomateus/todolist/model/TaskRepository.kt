@@ -20,5 +20,5 @@ data class Task(
     val description: String, 
     val category: Category,
     val id: UUID = UUID.randomUUID(),
-    var isCompleted: Boolean = false
+    val isCompleted: Boolean = false
 )

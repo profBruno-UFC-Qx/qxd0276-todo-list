@@ -88,7 +88,8 @@ fun AddTaskDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                onClick = { onTaskAdd(Task(text, selectedOption)) },
+                onClick = { onTaskAdd(Task(text.trim(), selectedOption)) },
+                enabled = text.isNotBlank()
             ) {
                 Text(
                     text = stringResource(R.string.add_task_button_text)

@@ -1,3 +1,4 @@
+
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
@@ -50,13 +51,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.screen.AllTasksCompletedScreen
 import br.com.brunomateus.todolist.ui.screen.NoTasksFoundScreen
+import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -178,7 +179,7 @@ fun TodoTopBar(
 @Composable
 fun AddTaskFloatActionButton(onClick: () -> Unit) {
     FloatingActionButton(
-        onClick = { onClick() },
+        onClick = onClick,
     ) {
         Icon(Icons.Filled.Add, stringResource(R.string.add_a_new_task_button))
     }
@@ -214,12 +215,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
     val tasks = rememberSaveable {
-        mutableStateListOf(
-            Task("Consulta 1", Category.SAUDE),
-            Task("Estudar Cálculo 2", Category.ESTUDO),
-            Task("Farra com os amigos", Category.LAZER),
-            Task("Reunião", Category.TRABALHO),
-        )
+        mutableStateListOf<Task>()
     }
 
     val completedTasks = tasks.count { it.isCompleted }
@@ -259,71 +255,49 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                 }
             }
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            if (allTasksCompleted) {
-                AllTasksCompletedScreen()
-            } else {
-                if (!inSelectionMode) {
-                    CategoryFilter(
-                        selectedCategories = selectedCategories,
-                        onCategorySelected = { category ->
-                            selectedCategories = if (category in selectedCategories) {
-                                selectedCategories - category
+            when {
+                tasks.isEmpty() -> NoTasksScreen()
+                allTasksCompleted && isFiltered -> AllTasksCompletedScreen()
+                else -> FilteredTaskList(
+                    tasks = tasks,
+                    listState = listState,
+                    inSelectionMode = inSelectionMode,
+                    isFiltered = isFiltered,
+                    sortOrder = sortOrder,
+                    selectedCategories = selectedCategories,
+                    onCategorySelected = { category ->
+                        selectedCategories = if (category in selectedCategories) {
+                            selectedCategories - category
+                        } else {
+                            selectedCategories + category
+                        }
+                    },
+                    selectedTaskIds = selectedTaskIds,
+                    onTaskClick = { task ->
+                        if (inSelectionMode) {
+                            selectedTaskIds = if (task.id in selectedTaskIds) {
+                                selectedTaskIds - task.id
                             } else {
-                                selectedCategories + category
+                                selectedTaskIds + task.id
                             }
                         }
-                    )
-                }
-                val filteredTasks = tasks.filter { task ->
-                    val completionFilter = !isFiltered || !task.isCompleted
-                    val categoryFilter =
-                        selectedCategories.isEmpty() || task.category in selectedCategories
-                    completionFilter && categoryFilter
-                }.let { tasksToSort ->
-                    when (sortOrder) {
-                        SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
-                        SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
-                        SortOrder.NONE -> tasksToSort
-                    }
-                }
-
-                val filtersAreActive = selectedCategories.isNotEmpty() || isFiltered
-                if (filteredTasks.isEmpty() && filtersAreActive) {
-                    NoTasksFoundScreen()
-                } else {
-                    TodoList(
-                        tasks = filteredTasks,
-                        listState = listState,
-                        selectedTaskIds = selectedTaskIds,
-                        onTaskClick = { task ->
-                            if (inSelectionMode) {
-                                selectedTaskIds = if (task.id in selectedTaskIds) {
-                                    selectedTaskIds - task.id
-                                } else {
-                                    selectedTaskIds + task.id
-                                }
-                            } else {
-                                // Handle regular click here if needed
-                            }
-                        },
-                        onTaskLongClick = { task ->
-                            if (!inSelectionMode) {
-                                selectedTaskIds = setOf(task.id)
-                            }
-                        },
-                        onTaskCompleted = { task, isCompleted ->
-                            val index = tasks.indexOfFirst { it.id == task.id }
-                            if (index != -1) {
-                                tasks[index] = task.copy(isCompleted = isCompleted)
-                            }
-                        },
-                        onDeleteTask = { task -> tasks.remove(task) },
-                        modifier = modifier
-                    )
-                }
+                    },
+                    onTaskLongClick = { task ->
+                        if (!inSelectionMode) {
+                            selectedTaskIds = setOf(task.id)
+                        }
+                    },
+                    onTaskCompleted = { task, isCompleted ->
+                        val index = tasks.indexOfFirst { it.id == task.id }
+                        if (index != -1) {
+                            tasks[index] = task.copy(isCompleted = isCompleted)
+                        }
+                    },
+                    onDeleteTask = { task -> tasks.remove(task) }
+                )
             }
         }
     }
@@ -336,6 +310,61 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                 showDialog = false
             }
         )
+    }
+}
+
+@Composable
+fun FilteredTaskList(
+    tasks: List<Task>,
+    listState: LazyListState,
+    inSelectionMode: Boolean,
+    isFiltered: Boolean,
+    sortOrder: SortOrder,
+    selectedCategories: Set<Category>,
+    onCategorySelected: (Category) -> Unit,
+    selectedTaskIds: Set<UUID>,
+    onTaskClick: (Task) -> Unit,
+    onTaskLongClick: (Task) -> Unit,
+    onTaskCompleted: (Task, Boolean) -> Unit,
+    onDeleteTask: (Task) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column {
+        if (!inSelectionMode) {
+            CategoryFilter(
+                selectedCategories = selectedCategories,
+                onCategorySelected = onCategorySelected
+            )
+        }
+        val filteredTasks = tasks.filter { task ->
+                val completionFilter = !isFiltered || !task.isCompleted
+                val categoryFilter =
+                    selectedCategories.isEmpty() || task.category in selectedCategories
+                completionFilter && categoryFilter
+            }.let { tasksToSort ->
+                when (sortOrder) {
+                    SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
+                    SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
+                    SortOrder.NONE -> tasksToSort
+                }
+            }
+
+
+        val filtersAreActive = selectedCategories.isNotEmpty() || isFiltered
+        if (filteredTasks.isEmpty() && filtersAreActive) {
+            NoTasksFoundScreen()
+        } else {
+            TodoList(
+                tasks = filteredTasks,
+                listState = listState,
+                selectedTaskIds = selectedTaskIds,
+                onTaskClick = onTaskClick,
+                onTaskLongClick = onTaskLongClick,
+                onTaskCompleted = onTaskCompleted,
+                onDeleteTask = onDeleteTask,
+                modifier = modifier
+            )
+        }
     }
 }
 

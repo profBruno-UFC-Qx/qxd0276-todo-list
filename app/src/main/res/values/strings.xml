@@ -19,6 +19,7 @@
     <string name="no_order">Remover ordenação</string>
     <string name="congratulations">Parabéns!</string>
     <string name="all_tasks_completed_message">Você concluiu todas as suas tarefas.</string>
-    <string name="no_tasks_found_message">Nenhuma tarefa encontrada</string>
+    <string name="no_tasks_found_message">Nenhuma tarefa cadastrada</string>
     <string name="select_others_categories_message">Tente selecionar outras categorias ou filtros.</string>
+    <string name="no_tasks_message">Você ainda não tem nenhuma tarefa cadastrada. Que tal adicionar uma?</string>
 </resources>
