@@ -41,6 +41,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -207,8 +208,8 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
 
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var isFiltered by remember { mutableStateOf(false) }
-    var selectedCategories by remember { mutableStateOf(emptySet<Category>()) }
-    var selectedTaskIds by remember { mutableStateOf<Set<UUID>>(emptySet()) }
+    val selectedCategories = remember { mutableStateSetOf<Category>() }
+    val selectedTaskIds = remember { mutableStateSetOf<UUID>() }
     var sortOrder by remember { mutableStateOf(SortOrder.NONE) }
     val inSelectionMode = selectedTaskIds.isNotEmpty()
     val listState = rememberLazyListState()
@@ -231,10 +232,10 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                 onSortOrderChange = { sortOrder = it },
                 inSelectionMode = inSelectionMode,
                 selectedCount = selectedTaskIds.size,
-                onClearSelection = { selectedTaskIds = emptySet() },
+                onClearSelection = { selectedTaskIds.clear() },
                 onDeleteSelected = {
                     tasks.removeAll { it.id in selectedTaskIds }
-                    selectedTaskIds = emptySet()
+                    selectedTaskIds.clear()
                 }
             )
         },
@@ -269,25 +270,25 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                     sortOrder = sortOrder,
                     selectedCategories = selectedCategories,
                     onCategorySelected = { category ->
-                        selectedCategories = if (category in selectedCategories) {
-                            selectedCategories - category
+                        if (category in selectedCategories) {
+                            selectedCategories.remove( category)
                         } else {
-                            selectedCategories + category
+                            selectedCategories.add(category)
                         }
                     },
                     selectedTaskIds = selectedTaskIds,
                     onTaskClick = { task ->
                         if (inSelectionMode) {
-                            selectedTaskIds = if (task.id in selectedTaskIds) {
-                                selectedTaskIds - task.id
+                            if (task.id in selectedTaskIds) {
+                                selectedTaskIds.remove(task.id)
                             } else {
-                                selectedTaskIds + task.id
+                                selectedTaskIds.add(task.id)
                             }
                         }
                     },
                     onTaskLongClick = { task ->
                         if (!inSelectionMode) {
-                            selectedTaskIds = setOf(task.id)
+                            selectedTaskIds.add(task.id)
                         }
                     },
                     onTaskCompleted = { task, isCompleted ->
