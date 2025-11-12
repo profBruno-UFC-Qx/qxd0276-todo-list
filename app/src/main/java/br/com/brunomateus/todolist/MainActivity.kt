@@ -37,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -54,6 +55,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
+import br.com.brunomateus.todolist.ui.TodoListViewModel
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.screen.AllTasksCompletedScreen
@@ -62,10 +64,9 @@ import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
+import androidx.lifecycle.viewmodel.compose.viewModel
+import br.com.brunomateus.todolist.ui.SortOrder
 
-enum class SortOrder {
-    NONE, ASCENDING, DESCENDING
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -85,7 +86,7 @@ fun TodoTopBar(
     isFiltering: Boolean,
     onFilterChange: (Boolean) -> Unit,
     sortOrder: SortOrder,
-    onSortOrderChange: (SortOrder) -> Unit,
+    onSortOrderChange: () -> Unit,
     inSelectionMode: Boolean,
     selectedCount: Int,
     onClearSelection: () -> Unit,
@@ -160,13 +161,7 @@ fun TodoTopBar(
                                 Text(text)
                             },
                             onClick = {
-                                onSortOrderChange(
-                                    when (sortOrder) {
-                                        SortOrder.NONE -> SortOrder.ASCENDING
-                                        SortOrder.ASCENDING -> SortOrder.DESCENDING
-                                        SortOrder.DESCENDING -> SortOrder.NONE
-                                    }
-                                )
+                                onSortOrderChange()
                                 expanded = false
                             }
                         )
@@ -204,13 +199,13 @@ fun GoToTopFloatActionButton(
 }
 
 @Composable
-fun TodoMainScreen(modifier: Modifier = Modifier) {
+fun TodoMainScreen(viewModel: TodoListViewModel = viewModel(), modifier: Modifier = Modifier) {
+
+    val todolistUiState by viewModel.uiState.collectAsState()
 
     var showDialog by rememberSaveable { mutableStateOf(false) }
     var isFiltered by remember { mutableStateOf(false) }
-    val selectedCategories = remember { mutableStateSetOf<Category>() }
     val selectedTaskIds = remember { mutableStateSetOf<UUID>() }
-    var sortOrder by remember { mutableStateOf(SortOrder.NONE) }
     val inSelectionMode = selectedTaskIds.isNotEmpty()
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
@@ -228,8 +223,8 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
             TodoTopBar(
                 isFiltering = isFiltered,
                 onFilterChange = { isFiltered = it },
-                sortOrder = sortOrder,
-                onSortOrderChange = { sortOrder = it },
+                sortOrder = todolistUiState.sortOrder,
+                onSortOrderChange = { viewModel.sort()},
                 inSelectionMode = inSelectionMode,
                 selectedCount = selectedTaskIds.size,
                 onClearSelection = { selectedTaskIds.clear() },
@@ -267,15 +262,9 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                     listState = listState,
                     inSelectionMode = inSelectionMode,
                     isFiltered = isFiltered,
-                    sortOrder = sortOrder,
-                    selectedCategories = selectedCategories,
-                    onCategorySelected = { category ->
-                        if (category in selectedCategories) {
-                            selectedCategories.remove( category)
-                        } else {
-                            selectedCategories.add(category)
-                        }
-                    },
+                    sortOrder = todolistUiState.sortOrder,
+                    selectedCategories = todolistUiState.selectedCategories,
+                    onCategorySelected = { viewModel.onCategorySelected(it)},
                     selectedTaskIds = selectedTaskIds,
                     onTaskClick = { task ->
                         if (inSelectionMode) {
