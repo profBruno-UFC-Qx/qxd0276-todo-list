@@ -13,5 +13,6 @@ enum class VisualizationOption {
 data class TodoListUiState(
     val sortOrder: SortOrder = SortOrder.NONE,
     val selectedCategories: Set<Category> = setOf(),
-    val visualizationOption: VisualizationOption = VisualizationOption.ALL
+    val visualizationOption: VisualizationOption = VisualizationOption.ALL,
+    val isDialogVisible: Boolean = false
 )

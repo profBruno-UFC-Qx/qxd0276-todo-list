@@ -52,7 +52,7 @@ fun TodoList(
     selectedTaskIds: Set<UUID>,
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
-    onTaskCompleted: (Task, Boolean) -> Unit,
+    onTaskCompleted: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -72,7 +72,7 @@ fun TodoList(
                         }
 
                         SwipeToDismissBoxValue.StartToEnd -> {
-                            onTaskCompleted(task, !task.isCompleted)
+                            onTaskCompleted(task)
                             false // Do not dismiss, just toggle
                         }
 
@@ -121,7 +121,7 @@ fun TodoList(
                     isSelected = task.id in selectedTaskIds,
                     onClick = { onTaskClick(task) },
                     onLongClick = { onTaskLongClick(task) },
-                    onTaskCompleted = { onTaskCompleted(task, it) },
+                    onTaskCompleted = { onTaskCompleted(task) },
                     onDeleteTask = { onDeleteTask(task) },
                     modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp)
                 )

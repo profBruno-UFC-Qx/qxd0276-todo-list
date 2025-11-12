@@ -203,17 +203,13 @@ fun GoToTopFloatActionButton(
 fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel = viewModel()) {
 
     val todolistUiState by viewModel.uiState.collectAsState()
-
     var showDialog by rememberSaveable { mutableStateOf(false) }
     val selectedTaskIds = remember { mutableStateSetOf<UUID>() }
     val inSelectionMode = selectedTaskIds.isNotEmpty()
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
-    val tasks = rememberSaveable {
-        mutableStateListOf<Task>()
-    }
-
+    val tasks by viewModel.tasks.collectAsState()
     val completedTasks = tasks.count { it.isCompleted }
     val totalTasks = tasks.size
     val allTasksCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted }
@@ -229,7 +225,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
                 selectedCount = selectedTaskIds.size,
                 onClearSelection = { selectedTaskIds.clear() },
                 onDeleteSelected = {
-                    tasks.removeAll { it.id in selectedTaskIds }
+                    viewModel.removeAll(selectedTaskIds)
                     selectedTaskIds.clear()
                 }
             )
@@ -280,13 +276,8 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
                             selectedTaskIds.add(task.id)
                         }
                     },
-                    onTaskCompleted = { task, isCompleted ->
-                        val index = tasks.indexOfFirst { it.id == task.id }
-                        if (index != -1) {
-                            tasks[index] = task.copy(isCompleted = isCompleted)
-                        }
-                    },
-                    onDeleteTask = { task -> tasks.remove(task) }
+                    onTaskCompleted = { task -> viewModel.toogleComplete(task)},
+                    onDeleteTask = { task -> viewModel.remove(task) }
                 )
             }
         }
@@ -296,7 +287,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
         AddTaskDialog(
             onDismissRequest = { showDialog = false },
             onTaskAdd = { task ->
-                tasks.add(task)
+                viewModel.add(task)
                 showDialog = false
             }
         )
@@ -315,7 +306,7 @@ fun FilteredTaskList(
     selectedTaskIds: Set<UUID>,
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
-    onTaskCompleted: (Task, Boolean) -> Unit,
+    onTaskCompleted: (Task) -> Unit,
     onDeleteTask: (Task) -> Unit,
     modifier: Modifier = Modifier
 ) {
