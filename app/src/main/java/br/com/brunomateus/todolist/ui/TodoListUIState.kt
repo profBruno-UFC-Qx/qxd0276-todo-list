@@ -6,8 +6,12 @@ enum class SortOrder {
     NONE, ASCENDING, DESCENDING
 }
 
+enum class VisualizationOption {
+    ALL, NOT_CONCLUDED
+}
+
 data class TodoListUiState(
     val sortOrder: SortOrder = SortOrder.NONE,
-    val selectedCategories: Set<Category> = setOf()
-
+    val selectedCategories: Set<Category> = setOf(),
+    val visualizationOption: VisualizationOption = VisualizationOption.ALL
 )

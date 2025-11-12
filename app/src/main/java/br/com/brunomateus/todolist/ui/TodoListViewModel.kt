@@ -12,6 +12,17 @@ class TodoListViewModel() : ViewModel() {
     val uiState = _uiState.asStateFlow()
 
 
+    fun changeVisualization() {
+        _uiState.update { currentState ->
+            currentState.copy(
+                visualizationOption = when (_uiState.value.visualizationOption) {
+                   VisualizationOption.ALL -> VisualizationOption.NOT_CONCLUDED
+                    VisualizationOption.NOT_CONCLUDED -> VisualizationOption.ALL
+                }
+            )
+        }
+    }
+
     fun onCategorySelected(category: Category) {
         val current = _uiState.value.selectedCategories
         val newSelection = if (category in current) {
