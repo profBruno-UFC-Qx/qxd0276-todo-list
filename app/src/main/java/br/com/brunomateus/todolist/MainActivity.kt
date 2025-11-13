@@ -204,10 +204,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
-    val tasks by viewModel.tasks.collectAsState()
-    val completedTasks = tasks.count { it.isCompleted }
-    val totalTasks = tasks.size
-    val allTasksCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted }
+    val tasks = viewModel.tasks.collectAsState()
 
     Scaffold(
         topBar = {
@@ -224,7 +221,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
         },
         bottomBar = {
             if (!todolistUiState.inSelectionMode) {
-                TaskProgressBar(completedTasks = completedTasks, totalTasks = totalTasks)
+                TaskProgressBar(completedTasks = viewModel.completedTask, totalTasks = viewModel.totalTask)
             }
         },
         floatingActionButton = {
@@ -241,14 +238,13 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
             when {
-                tasks.isEmpty() -> NoTasksScreen()
-                allTasksCompleted && todolistUiState.visualizationOption == VisualizationOption.NOT_CONCLUDED -> AllTasksCompletedScreen()
+                viewModel.totalTask == 0 -> NoTasksScreen()
+                viewModel.isAllTasksCompleted && todolistUiState.visualizationOption == VisualizationOption.NOT_CONCLUDED -> AllTasksCompletedScreen()
                 else -> FilteredTaskList(
-                    tasks = tasks,
+                    tasks = tasks.value,
                     listState = listState,
                     inSelectionMode = todolistUiState.inSelectionMode,
                     visualization = todolistUiState.visualizationOption,
-                    sortOrder = todolistUiState.sortOrder,
                     selectedCategories = todolistUiState.selectedCategories,
                     onCategorySelected = viewModel::onCategorySelected,
                     selectedTaskIds = todolistUiState.selectedTaskIds,
@@ -278,7 +274,6 @@ fun FilteredTaskList(
     listState: LazyListState,
     inSelectionMode: Boolean,
     visualization: VisualizationOption,
-    sortOrder: SortOrder,
     selectedCategories: Set<Category>,
     onCategorySelected: (Category) -> Unit,
     selectedTaskIds: Set<UUID>,
@@ -295,27 +290,13 @@ fun FilteredTaskList(
                 onCategorySelected = onCategorySelected
             )
         }
-        val filteredTasks = remember(tasks, visualization, selectedCategories, sortOrder) {
-            tasks.filter { task ->
-                val completionFilter = visualization == VisualizationOption.ALL || !task.isCompleted
-                val categoryFilter =
-                    selectedCategories.isEmpty() || task.category in selectedCategories
-                completionFilter && categoryFilter
-            }.let { tasksToSort ->
-                when (sortOrder) {
-                    SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
-                    SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
-                    SortOrder.NONE -> tasksToSort
-                }
-            }
-        }
 
         val filtersAreActive = selectedCategories.isNotEmpty() || visualization == VisualizationOption.NOT_CONCLUDED
-        if (filteredTasks.isEmpty() && filtersAreActive) {
+        if (tasks.isEmpty() && filtersAreActive) {
             NoTasksFoundScreen()
         } else {
             TodoList(
-                tasks = filteredTasks,
+                tasks = tasks,
                 listState = listState,
                 selectedTaskIds = selectedTaskIds,
                 onTaskClick = onTaskClick,

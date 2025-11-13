@@ -1,10 +1,14 @@
 package br.com.brunomateus.todolist.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 class TodoListViewModel : ViewModel() {
@@ -13,8 +17,33 @@ class TodoListViewModel : ViewModel() {
     val uiState = _uiState.asStateFlow()
 
     private val _tasks = MutableStateFlow<List<Task>>(emptyList())
-    val tasks = _tasks.asStateFlow()
 
+    val tasks = combine(_tasks, _uiState) { tasks, uiState ->
+        tasks.filter { task ->
+            val completionFilter = uiState.visualizationOption == VisualizationOption.ALL || !task.isCompleted
+            val categoryFilter = uiState.selectedCategories.isEmpty() || task.category in uiState.selectedCategories
+            completionFilter && categoryFilter
+        }.let { tasksToSort ->
+            when (uiState.sortOrder) {
+                SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
+                SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
+                SortOrder.NONE -> tasksToSort
+            }
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = emptyList()
+    )
+
+    val completedTask
+        get() = _tasks.value.count { task -> task.isCompleted }
+
+    val isAllTasksCompleted
+        get() = _tasks.value.isNotEmpty() && _tasks.value.all { it.isCompleted }
+
+    val totalTask
+        get() = _tasks.value.size
 
     fun changeVisualization() {
         _uiState.update { currentState ->
