@@ -8,20 +8,22 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 class TodoListViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(TodoListUiState())
-    val uiState = _uiState.asStateFlow()
 
     private val _tasks = MutableStateFlow<List<Task>>(emptyList())
 
     val tasks = combine(_tasks, _uiState) { tasks, uiState ->
         tasks.filter { task ->
-            val completionFilter = uiState.visualizationOption == VisualizationOption.ALL || !task.isCompleted
-            val categoryFilter = uiState.selectedCategories.isEmpty() || task.category in uiState.selectedCategories
+            val completionFilter =
+                uiState.visualizationOption == VisualizationOption.ALL || !task.isCompleted
+            val categoryFilter =
+                uiState.selectedCategories.isEmpty() || task.category in uiState.selectedCategories
             completionFilter && categoryFilter
         }.let { tasksToSort ->
             when (uiState.sortOrder) {
@@ -36,14 +38,31 @@ class TodoListViewModel : ViewModel() {
         initialValue = emptyList()
     )
 
-    val completedTask
-        get() = _tasks.value.count { task -> task.isCompleted }
+    val uiState = combine(_tasks, tasks, _uiState) { currentTasks, filtered, uiState ->
+        when {
+            currentTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTaskRegistered)
+            currentTasks.all { it -> it.isCompleted } -> uiState.copy(status = TodoListState.AllTasksConcluded)
+            uiState.selectedTaskIds.isNotEmpty() -> uiState.copy(status = TodoListState.SelectionMode)
+            filtered.isEmpty() -> uiState.copy(status = TodoListState.NoTasksToShow)
+            else -> uiState.copy(status = TodoListState.TaskToShow)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = _uiState.value
+    )
 
-    val isAllTasksCompleted
-        get() = _tasks.value.isNotEmpty() && _tasks.value.all { it.isCompleted }
+    val completedTask = _tasks.map { tasks -> tasks.count { it.isCompleted } }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Lazily,
+        initialValue = 0
+    )
 
-    val totalTask
-        get() = _tasks.value.size
+    val totalTask = _tasks.map { it.size }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(),
+        initialValue = 0
+    )
 
     fun changeVisualization() {
         _uiState.update { currentState ->
@@ -110,7 +129,7 @@ class TodoListViewModel : ViewModel() {
         _tasks.value = _tasks.value.filter { it.id != task.id }
     }
 
-    fun toogleComplete(task: Task) {
+    fun toggleComplete(task: Task) {
         _tasks.value = _tasks.value.map { t ->
             if (t.id == task.id) {
                 t.copy(isCompleted = !t.isCompleted)

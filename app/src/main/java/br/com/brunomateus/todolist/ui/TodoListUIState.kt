@@ -11,12 +11,18 @@ enum class VisualizationOption {
     ALL, NOT_CONCLUDED
 }
 
+sealed class TodoListState {
+    object NoTaskRegistered: TodoListState()
+    object NoTasksToShow: TodoListState()
+    object SelectionMode: TodoListState()
+    object AllTasksConcluded: TodoListState()
+    object TaskToShow: TodoListState()
+}
+
 data class TodoListUiState(
     val sortOrder: SortOrder = SortOrder.NONE,
     val selectedCategories: Set<Category> = setOf(),
     val visualizationOption: VisualizationOption = VisualizationOption.ALL,
     val selectedTaskIds: Set<UUID> = emptySet(),
-) {
-    val inSelectionMode: Boolean
-        get() = selectedTaskIds.isNotEmpty()
-}
+    val status: TodoListState = TodoListState.NoTasksToShow
+)
