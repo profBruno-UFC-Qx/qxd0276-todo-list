@@ -2,6 +2,7 @@
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -37,11 +38,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -52,8 +52,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
+import br.com.brunomateus.todolist.ui.SortOrder
+import br.com.brunomateus.todolist.ui.TodoListState
+import br.com.brunomateus.todolist.ui.TodoListViewModel
+import br.com.brunomateus.todolist.ui.VisualizationOption
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
 import br.com.brunomateus.todolist.ui.screen.AllTasksCompletedScreen
@@ -62,10 +67,6 @@ import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 import java.util.UUID
-
-enum class SortOrder {
-    NONE, ASCENDING, DESCENDING
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -82,10 +83,10 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TodoTopBar(
-    isFiltering: Boolean,
-    onFilterChange: (Boolean) -> Unit,
+    visualization: VisualizationOption,
+    onFilterChange: () -> Unit,
     sortOrder: SortOrder,
-    onSortOrderChange: (SortOrder) -> Unit,
+    onSortOrderChange: () -> Unit,
     inSelectionMode: Boolean,
     selectedCount: Int,
     onClearSelection: () -> Unit,
@@ -140,13 +141,13 @@ fun TodoTopBar(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = if (isFiltering) stringResource(R.string.all_tasks) else stringResource(
+                                    text = if (visualization == VisualizationOption.NOT_CONCLUDED) stringResource(R.string.all_tasks) else stringResource(
                                         R.string.only_todo_tasks
                                     )
                                 )
                             },
                             onClick = {
-                                onFilterChange(!isFiltering)
+                                onFilterChange()
                                 expanded = false
                             }
                         )
@@ -160,13 +161,7 @@ fun TodoTopBar(
                                 Text(text)
                             },
                             onClick = {
-                                onSortOrderChange(
-                                    when (sortOrder) {
-                                        SortOrder.NONE -> SortOrder.ASCENDING
-                                        SortOrder.ASCENDING -> SortOrder.DESCENDING
-                                        SortOrder.DESCENDING -> SortOrder.NONE
-                                    }
-                                )
+                                onSortOrderChange()
                                 expanded = false
                             }
                         )
@@ -204,43 +199,33 @@ fun GoToTopFloatActionButton(
 }
 
 @Composable
-fun TodoMainScreen(modifier: Modifier = Modifier) {
+fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel = viewModel()) {
+
+    val todolistUiState by viewModel.uiState.collectAsState()
+    val completedTasks by viewModel.completedTask.collectAsState()
+    val totalTasks by viewModel.totalTask.collectAsState()
 
     var showDialog by rememberSaveable { mutableStateOf(false) }
-    var isFiltered by remember { mutableStateOf(false) }
-    val selectedCategories = remember { mutableStateSetOf<Category>() }
-    val selectedTaskIds = remember { mutableStateSetOf<UUID>() }
-    var sortOrder by remember { mutableStateOf(SortOrder.NONE) }
-    val inSelectionMode = selectedTaskIds.isNotEmpty()
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
-    val tasks = rememberSaveable {
-        mutableStateListOf<Task>()
-    }
-
-    val completedTasks = tasks.count { it.isCompleted }
-    val totalTasks = tasks.size
-    val allTasksCompleted = tasks.isNotEmpty() && tasks.all { it.isCompleted }
+    val tasks = viewModel.tasks.collectAsState()
 
     Scaffold(
         topBar = {
             TodoTopBar(
-                isFiltering = isFiltered,
-                onFilterChange = { isFiltered = it },
-                sortOrder = sortOrder,
-                onSortOrderChange = { sortOrder = it },
-                inSelectionMode = inSelectionMode,
-                selectedCount = selectedTaskIds.size,
-                onClearSelection = { selectedTaskIds.clear() },
-                onDeleteSelected = {
-                    tasks.removeAll { it.id in selectedTaskIds }
-                    selectedTaskIds.clear()
-                }
+                visualization = todolistUiState.visualizationOption,
+                onFilterChange = viewModel::changeVisualization,
+                sortOrder = todolistUiState.sortOrder,
+                onSortOrderChange = viewModel::sort,
+                inSelectionMode = todolistUiState.status == TodoListState.SelectionMode,
+                selectedCount = todolistUiState.selectedTaskIds.size,
+                onClearSelection = viewModel::clearSelection,
+                onDeleteSelected = viewModel::removeAll
             )
         },
         bottomBar = {
-            if (!inSelectionMode) {
+            if (todolistUiState.status != TodoListState.SelectionMode) {
                 TaskProgressBar(completedTasks = completedTasks, totalTasks = totalTasks)
             }
         },
@@ -249,56 +234,42 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
                 if (showScrollToTopButton) {
                     GoToTopFloatActionButton(listState)
                 }
-                if (!inSelectionMode) {
-                    AddTaskFloatActionButton(onClick = {
-                        showDialog = true
-                    })
+                if (todolistUiState.status != TodoListState.SelectionMode) {
+                    AddTaskFloatActionButton(onClick = { showDialog = true })
                 }
             }
         },
         modifier = modifier.fillMaxSize()
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding)) {
-            when {
-                tasks.isEmpty() -> NoTasksScreen()
-                allTasksCompleted && isFiltered -> AllTasksCompletedScreen()
-                else -> FilteredTaskList(
-                    tasks = tasks,
+            when (todolistUiState.status) {
+                TodoListState.NoTaskRegistered -> NoTasksScreen()
+                TodoListState.AllTasksConcluded -> AllTasksCompletedScreen()
+                TodoListState.NoTasksToShow -> {
+                    CategoryFilter(selectedCategories = todolistUiState.selectedCategories, onCategorySelected = viewModel::onCategorySelected)
+                    NoTasksFoundScreen()
+                }
+                TodoListState.SelectionMode ->  TodoList(
+                    tasks = tasks.value,
                     listState = listState,
-                    inSelectionMode = inSelectionMode,
-                    isFiltered = isFiltered,
-                    sortOrder = sortOrder,
-                    selectedCategories = selectedCategories,
-                    onCategorySelected = { category ->
-                        if (category in selectedCategories) {
-                            selectedCategories.remove( category)
-                        } else {
-                            selectedCategories.add(category)
-                        }
-                    },
-                    selectedTaskIds = selectedTaskIds,
-                    onTaskClick = { task ->
-                        if (inSelectionMode) {
-                            if (task.id in selectedTaskIds) {
-                                selectedTaskIds.remove(task.id)
-                            } else {
-                                selectedTaskIds.add(task.id)
-                            }
-                        }
-                    },
-                    onTaskLongClick = { task ->
-                        if (!inSelectionMode) {
-                            selectedTaskIds.add(task.id)
-                        }
-                    },
-                    onTaskCompleted = { task, isCompleted ->
-                        val index = tasks.indexOfFirst { it.id == task.id }
-                        if (index != -1) {
-                            tasks[index] = task.copy(isCompleted = isCompleted)
-                        }
-                    },
-                    onDeleteTask = { task -> tasks.remove(task) }
+                    selectedTaskIds = todolistUiState.selectedTaskIds,
+                    onTaskClick = viewModel::onTaskClick,
+                    onTaskLongClick = { },
+                    onTaskCompleted = { },
+                    onDeleteTask = { }
                 )
+                else -> {
+                    CategoryFilter(selectedCategories = todolistUiState.selectedCategories, onCategorySelected = viewModel::onCategorySelected)
+                    TodoList(
+                        tasks = tasks.value,
+                        listState = listState,
+                        selectedTaskIds = todolistUiState.selectedTaskIds,
+                        onTaskClick = { },
+                        onTaskLongClick = viewModel::onTaskLongClick,
+                        onTaskCompleted = { task -> viewModel.toggleComplete(task) },
+                        onDeleteTask = viewModel::remove
+                    )
+                 }
             }
         }
     }
@@ -306,69 +277,13 @@ fun TodoMainScreen(modifier: Modifier = Modifier) {
     if (showDialog) {
         AddTaskDialog(
             onDismissRequest = { showDialog = false },
-            onTaskAdd = { task ->
-                tasks.add(task)
+            onTaskAdd = {
+                viewModel.add(it)
                 showDialog = false
             }
         )
     }
 }
-
-@Composable
-fun FilteredTaskList(
-    tasks: List<Task>,
-    listState: LazyListState,
-    inSelectionMode: Boolean,
-    isFiltered: Boolean,
-    sortOrder: SortOrder,
-    selectedCategories: Set<Category>,
-    onCategorySelected: (Category) -> Unit,
-    selectedTaskIds: Set<UUID>,
-    onTaskClick: (Task) -> Unit,
-    onTaskLongClick: (Task) -> Unit,
-    onTaskCompleted: (Task, Boolean) -> Unit,
-    onDeleteTask: (Task) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Column {
-        if (!inSelectionMode) {
-            CategoryFilter(
-                selectedCategories = selectedCategories,
-                onCategorySelected = onCategorySelected
-            )
-        }
-        val filteredTasks = tasks.filter { task ->
-                val completionFilter = !isFiltered || !task.isCompleted
-                val categoryFilter =
-                    selectedCategories.isEmpty() || task.category in selectedCategories
-                completionFilter && categoryFilter
-            }.let { tasksToSort ->
-                when (sortOrder) {
-                    SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
-                    SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
-                    SortOrder.NONE -> tasksToSort
-                }
-            }
-
-
-        val filtersAreActive = selectedCategories.isNotEmpty() || isFiltered
-        if (filteredTasks.isEmpty() && filtersAreActive) {
-            NoTasksFoundScreen()
-        } else {
-            TodoList(
-                tasks = filteredTasks,
-                listState = listState,
-                selectedTaskIds = selectedTaskIds,
-                onTaskClick = onTaskClick,
-                onTaskLongClick = onTaskLongClick,
-                onTaskCompleted = onTaskCompleted,
-                onDeleteTask = onDeleteTask,
-                modifier = modifier
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryFilter(
