@@ -49,7 +49,7 @@ import java.util.UUID
 fun TodoList(
     tasks: List<Task>,
     listState: LazyListState,
-    selectedTaskIds: Set<UUID>,
+    selectedTaskIds: Set<Int>,
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
     onTaskCompleted: (Task) -> Unit,
@@ -197,8 +197,4 @@ fun TodoListItem(
 
 
 
-@Preview
-@Composable
-fun PreviewListItem() {
-    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE), false, {}, {}, {}, {})
-}
+

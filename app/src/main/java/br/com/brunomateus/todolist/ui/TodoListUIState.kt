@@ -23,6 +23,6 @@ data class TodoListUiState(
     val sortOrder: SortOrder = SortOrder.NONE,
     val selectedCategories: Set<Category> = setOf(),
     val visualizationOption: VisualizationOption = VisualizationOption.ALL,
-    val selectedTaskIds: Set<UUID> = emptySet(),
+    val selectedTaskIds: Set<Int> = emptySet(),
     val status: TodoListState = TodoListState.NoTasksToShow
 )

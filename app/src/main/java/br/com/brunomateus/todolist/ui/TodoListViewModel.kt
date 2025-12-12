@@ -1,22 +1,35 @@
 package br.com.brunomateus.todolist.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import br.com.brunomateus.todolist.data.AppDatabase
+import br.com.brunomateus.todolist.data.repository.TaskRepository
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class TodoListViewModel : ViewModel() {
+class TodoListViewModel(
+    private val taskRepository: TaskRepository
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TodoListUiState())
 
-    private val _tasks = MutableStateFlow<List<Task>>(emptyList())
+    private val _tasks = taskRepository.tasks.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        emptyList()
+    )
 
     val tasks = combine(_tasks, _uiState) { tasks, uiState ->
         tasks.filter { task ->
@@ -115,27 +128,54 @@ class TodoListViewModel : ViewModel() {
         _uiState.update { it.copy(selectedTaskIds = emptySet()) }
     }
 
-    fun add(task: Task) {
-        _tasks.value = _tasks.value + task
+    fun add(description: String, category: Category) {
+        viewModelScope.launch {
+            taskRepository.addTask(
+                Task(
+                    category = category,
+                    description = description
+                )
+            )
+        }
     }
 
     fun removeAll() {
         val selectedTaskIds = _uiState.value.selectedTaskIds
-        _tasks.value = _tasks.value.filter { it.id !in selectedTaskIds }
-        clearSelection()
+        viewModelScope.launch {
+            tasks.value.filter { task -> task.id in selectedTaskIds }
+                .also { taskRepository.deleteTasks(*it.toTypedArray()) }
+            clearSelection()
+        }
     }
 
     fun remove(task: Task) {
-        _tasks.value = _tasks.value.filter { it.id != task.id }
+        viewModelScope.launch {
+            taskRepository.deleteTask(task)
+        }
     }
 
     fun toggleComplete(task: Task) {
-        _tasks.value = _tasks.value.map { t ->
-            if (t.id == task.id) {
-                t.copy(isCompleted = !t.isCompleted)
-            } else {
-                t
-            }
+        viewModelScope.launch {
+            taskRepository.toggleComplete(task)
         }
     }
 }
+
+
+class TodoListViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val db = AppDatabase.getInstance(context)
+        val dao = db.taskDao()
+        val repo = TaskRepository(dao)
+        return TodoListViewModel(repo) as T
+    }
+}
+
+
+
+
+
+
+
+
+

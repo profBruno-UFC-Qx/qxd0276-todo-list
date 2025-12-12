@@ -1,4 +1,3 @@
-
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
@@ -48,6 +47,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -58,6 +58,7 @@ import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.SortOrder
 import br.com.brunomateus.todolist.ui.TodoListState
 import br.com.brunomateus.todolist.ui.TodoListViewModel
+import br.com.brunomateus.todolist.ui.TodoListViewModelFactory
 import br.com.brunomateus.todolist.ui.VisualizationOption
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
@@ -141,7 +142,9 @@ fun TodoTopBar(
                         DropdownMenuItem(
                             text = {
                                 Text(
-                                    text = if (visualization == VisualizationOption.NOT_CONCLUDED) stringResource(R.string.all_tasks) else stringResource(
+                                    text = if (visualization == VisualizationOption.NOT_CONCLUDED) stringResource(
+                                        R.string.all_tasks
+                                    ) else stringResource(
                                         R.string.only_todo_tasks
                                     )
                                 )
@@ -199,7 +202,13 @@ fun GoToTopFloatActionButton(
 }
 
 @Composable
-fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel = viewModel()) {
+fun TodoMainScreen(
+    modifier: Modifier = Modifier, viewModel: TodoListViewModel = viewModel(
+        factory = TodoListViewModelFactory(
+            LocalContext.current
+        )
+    )
+) {
 
     val todolistUiState by viewModel.uiState.collectAsState()
     val completedTasks by viewModel.completedTask.collectAsState()
@@ -246,10 +255,14 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
                 TodoListState.NoTaskRegistered -> NoTasksScreen()
                 TodoListState.AllTasksConcluded -> AllTasksCompletedScreen()
                 TodoListState.NoTasksToShow -> {
-                    CategoryFilter(selectedCategories = todolistUiState.selectedCategories, onCategorySelected = viewModel::onCategorySelected)
+                    CategoryFilter(
+                        selectedCategories = todolistUiState.selectedCategories,
+                        onCategorySelected = viewModel::onCategorySelected
+                    )
                     NoTasksFoundScreen()
                 }
-                TodoListState.SelectionMode ->  TodoList(
+
+                TodoListState.SelectionMode -> TodoList(
                     tasks = tasks.value,
                     listState = listState,
                     selectedTaskIds = todolistUiState.selectedTaskIds,
@@ -258,8 +271,12 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
                     onTaskCompleted = { },
                     onDeleteTask = { }
                 )
+
                 else -> {
-                    CategoryFilter(selectedCategories = todolistUiState.selectedCategories, onCategorySelected = viewModel::onCategorySelected)
+                    CategoryFilter(
+                        selectedCategories = todolistUiState.selectedCategories,
+                        onCategorySelected = viewModel::onCategorySelected
+                    )
                     TodoList(
                         tasks = tasks.value,
                         listState = listState,
@@ -269,7 +286,7 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
                         onTaskCompleted = { task -> viewModel.toggleComplete(task) },
                         onDeleteTask = viewModel::remove
                     )
-                 }
+                }
             }
         }
     }
@@ -277,13 +294,14 @@ fun TodoMainScreen(modifier: Modifier = Modifier, viewModel: TodoListViewModel =
     if (showDialog) {
         AddTaskDialog(
             onDismissRequest = { showDialog = false },
-            onTaskAdd = {
-                viewModel.add(it)
+            onTaskAdd = { description, category ->
+                viewModel.add(description, category)
                 showDialog = false
             }
         )
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryFilter(
