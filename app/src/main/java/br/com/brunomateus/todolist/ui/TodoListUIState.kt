@@ -1,11 +1,9 @@
 package br.com.brunomateus.todolist.ui
 
+import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
 import java.util.UUID
 
-enum class SortOrder {
-    NONE, ASCENDING, DESCENDING
-}
 
 enum class VisualizationOption {
     ALL, NOT_CONCLUDED

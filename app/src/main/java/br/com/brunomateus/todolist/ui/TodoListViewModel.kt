@@ -5,15 +5,15 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import br.com.brunomateus.todolist.data.AppDatabase
+import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.data.repository.TaskRepository
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.fold
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -25,38 +25,32 @@ class TodoListViewModel(
 
     private val _uiState = MutableStateFlow(TodoListUiState())
 
-    private val _tasks = taskRepository.tasks.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        emptyList()
-    )
+    private val allTasksFromDb = taskRepository.getAll()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
 
-    val tasks = combine(_tasks, _uiState) { tasks, uiState ->
-        tasks.filter { task ->
-            val completionFilter =
-                uiState.visualizationOption == VisualizationOption.ALL || !task.isCompleted
-            val categoryFilter =
-                uiState.selectedCategories.isEmpty() || task.category in uiState.selectedCategories
-            completionFilter && categoryFilter
-        }.let { tasksToSort ->
-            when (uiState.sortOrder) {
-                SortOrder.ASCENDING -> tasksToSort.sortedBy { it.description }
-                SortOrder.DESCENDING -> tasksToSort.sortedByDescending { it.description }
-                SortOrder.NONE -> tasksToSort
-            }
-        }
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val tasks = _uiState.flatMapLatest { uiState ->
+        taskRepository.getAll(
+            sortOrder = uiState.sortOrder,
+            visualization = uiState.visualizationOption,
+            categories = uiState.selectedCategories
+        )
     }.stateIn(
         scope = viewModelScope,
-        started = SharingStarted.Lazily,
+        started = SharingStarted.WhileSubscribed(5000),
         initialValue = emptyList()
     )
 
-    val uiState = combine(_tasks, tasks, _uiState) { currentTasks, filtered, uiState ->
+    val uiState = combine(allTasksFromDb, tasks, _uiState) { allTasks, filteredTasks, uiState ->
         when {
-            currentTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTaskRegistered)
-            currentTasks.all { it -> it.isCompleted } -> uiState.copy(status = TodoListState.AllTasksConcluded)
+            allTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTaskRegistered)
+            allTasks.all { it.isCompleted } -> uiState.copy(status = TodoListState.AllTasksConcluded)
             uiState.selectedTaskIds.isNotEmpty() -> uiState.copy(status = TodoListState.SelectionMode)
-            filtered.isEmpty() -> uiState.copy(status = TodoListState.NoTasksToShow)
+            filteredTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTasksToShow)
             else -> uiState.copy(status = TodoListState.TaskToShow)
         }
     }.stateIn(
@@ -65,13 +59,13 @@ class TodoListViewModel(
         initialValue = _uiState.value
     )
 
-    val completedTask = _tasks.map { tasks -> tasks.count { it.isCompleted } }.stateIn(
+    val completedTask = allTasksFromDb.map { tasks -> tasks.count { it.isCompleted } }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Lazily,
         initialValue = 0
     )
 
-    val totalTask = _tasks.map { it.size }.stateIn(
+    val totalTask = allTasksFromDb.map { it.size }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(),
         initialValue = 0
@@ -102,9 +96,9 @@ class TodoListViewModel(
         _uiState.update { currentState ->
             currentState.copy(
                 sortOrder = when (_uiState.value.sortOrder) {
-                    SortOrder.NONE -> SortOrder.ASCENDING
-                    SortOrder.ASCENDING -> SortOrder.DESCENDING
-                    SortOrder.DESCENDING -> SortOrder.NONE
+                    SortOrder.NONE -> SortOrder.ASC
+                    SortOrder.ASC -> SortOrder.DESC
+                    SortOrder.DESC -> SortOrder.NONE
                 }
             )
         }
@@ -170,12 +164,3 @@ class TodoListViewModelFactory(private val context: Context) : ViewModelProvider
         return TodoListViewModel(repo) as T
     }
 }
-
-
-
-
-
-
-
-
-

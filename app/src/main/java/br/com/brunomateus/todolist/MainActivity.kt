@@ -53,9 +53,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
-import br.com.brunomateus.todolist.ui.SortOrder
 import br.com.brunomateus.todolist.ui.TodoListState
 import br.com.brunomateus.todolist.ui.TodoListViewModel
 import br.com.brunomateus.todolist.ui.TodoListViewModelFactory
@@ -157,8 +157,8 @@ fun TodoTopBar(
                         DropdownMenuItem(
                             text = {
                                 val text = when (sortOrder) {
-                                    SortOrder.ASCENDING -> stringResource(R.string.sort_z_a)
-                                    SortOrder.DESCENDING -> stringResource(R.string.no_order)
+                                    SortOrder.ASC -> stringResource(R.string.sort_z_a)
+                                    SortOrder.DESC -> stringResource(R.string.no_order)
                                     else -> stringResource(R.string.sort_a_z)
                                 }
                                 Text(text)
