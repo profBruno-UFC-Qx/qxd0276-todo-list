@@ -27,7 +27,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.brunomateus.todolist.R
 import br.com.brunomateus.todolist.model.Category
-import br.com.brunomateus.todolist.model.Task
 
 @Composable
 fun AddTaskDialog(

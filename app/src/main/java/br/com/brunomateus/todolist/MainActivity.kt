@@ -1,7 +1,6 @@
 package br.com.brunomateus.todolist
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -55,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
-import br.com.brunomateus.todolist.model.Task
 import br.com.brunomateus.todolist.ui.TodoListState
 import br.com.brunomateus.todolist.ui.TodoListViewModel
 import br.com.brunomateus.todolist.ui.TodoListViewModelFactory
@@ -67,7 +65,6 @@ import br.com.brunomateus.todolist.ui.screen.NoTasksFoundScreen
 import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
-import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

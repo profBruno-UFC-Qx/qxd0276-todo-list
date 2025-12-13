@@ -37,11 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
-import java.util.UUID
 
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)

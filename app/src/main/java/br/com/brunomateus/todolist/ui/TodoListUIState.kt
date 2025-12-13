@@ -2,7 +2,6 @@ package br.com.brunomateus.todolist.ui
 
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
-import java.util.UUID
 
 
 enum class VisualizationOption {

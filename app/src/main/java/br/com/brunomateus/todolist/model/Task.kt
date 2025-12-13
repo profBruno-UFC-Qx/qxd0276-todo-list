@@ -3,7 +3,6 @@ package br.com.brunomateus.todolist.model
 import androidx.compose.ui.graphics.Color
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import java.util.UUID
 
 enum class Category(val color: Color) {
     ESTUDO(Color.Red) {
@@ -26,16 +25,3 @@ data class Task(
     val category: Category,
     val isCompleted: Boolean = false
 )
-
-
-
-
-
-
-
-
-
-
-
-
-
