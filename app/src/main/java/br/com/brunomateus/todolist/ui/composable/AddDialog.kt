@@ -27,12 +27,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import br.com.brunomateus.todolist.R
 import br.com.brunomateus.todolist.model.Category
-import br.com.brunomateus.todolist.model.Task
 
 @Composable
 fun AddTaskDialog(
     onDismissRequest: () -> Unit,
-    onTaskAdd: (Task) -> Unit,
+    onTaskAdd: (String, Category) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val options = Category.entries.toList()
@@ -88,7 +87,7 @@ fun AddTaskDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = {
             TextButton(
-                onClick = { onTaskAdd(Task(text.trim(), selectedOption)) },
+                onClick = { onTaskAdd(text.trim(), selectedOption) },
                 enabled = text.isNotBlank()
             ) {
                 Text(
@@ -112,5 +111,5 @@ fun AddTaskDialog(
 @Preview
 @Composable
 fun PreviewDialog() {
-    AddTaskDialog({}, {})
+    //AddTaskDialog({}, {})
 }

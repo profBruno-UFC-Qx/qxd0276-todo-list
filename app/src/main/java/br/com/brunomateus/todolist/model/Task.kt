@@ -1,7 +1,8 @@
 package br.com.brunomateus.todolist.model
 
 import androidx.compose.ui.graphics.Color
-import java.util.UUID
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 
 enum class Category(val color: Color) {
     ESTUDO(Color.Red) {
@@ -16,9 +17,11 @@ enum class Category(val color: Color) {
     abstract fun getName(): String
 }
 
+@Entity(tableName = "tasks")
 data class Task(
-    val description: String, 
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
+    val description: String,
     val category: Category,
-    val id: UUID = UUID.randomUUID(),
     val isCompleted: Boolean = false
 )

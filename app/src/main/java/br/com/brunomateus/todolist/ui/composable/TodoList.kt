@@ -37,11 +37,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
-import java.util.UUID
 
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -49,7 +46,7 @@ import java.util.UUID
 fun TodoList(
     tasks: List<Task>,
     listState: LazyListState,
-    selectedTaskIds: Set<UUID>,
+    selectedTaskIds: Set<Int>,
     onTaskClick: (Task) -> Unit,
     onTaskLongClick: (Task) -> Unit,
     onTaskCompleted: (Task) -> Unit,
@@ -197,8 +194,4 @@ fun TodoListItem(
 
 
 
-@Preview
-@Composable
-fun PreviewListItem() {
-    TodoListItem(Task("Fazer exame de sangue", Category.SAUDE), false, {}, {}, {}, {})
-}
+
