@@ -1,5 +1,6 @@
 package br.com.brunomateus.todolist
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -51,6 +52,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
@@ -66,6 +71,7 @@ import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -207,15 +213,15 @@ fun TodoMainScreen(
     )
 ) {
 
-    val todolistUiState by viewModel.uiState.collectAsState()
-    val completedTasks by viewModel.completedTask.collectAsState()
-    val totalTasks by viewModel.totalTask.collectAsState()
+    val todolistUiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val completedTasks by viewModel.completedTask.collectAsStateWithLifecycle()
+    val totalTasks by viewModel.totalTask.collectAsStateWithLifecycle()
 
     var showDialog by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val showScrollToTopButton by remember { derivedStateOf { listState.firstVisibleItemIndex > 0 } }
 
-    val tasks = viewModel.tasks.collectAsState()
+    val tasks = viewModel.tasks.collectAsStateWithLifecycle()
 
     Scaffold(
         topBar = {
