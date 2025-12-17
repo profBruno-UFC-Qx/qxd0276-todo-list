@@ -37,17 +37,11 @@ class TodoListViewModel(
 
     init {
         viewModelScope.launch {
-            userPreferencesRepository.sortOrder.collect {
-                _uiState.update { currentState ->
-                    currentState.copy(sortOrder = SortOrder.valueOf(it))
-                }
-            }
-        }
-        viewModelScope.launch {
-            userPreferencesRepository.showAll.collect {
+            userPreferencesRepository.userSettings.collect {
                 _uiState.update { currentState ->
                     currentState.copy(
-                        visualizationOption = if (it) VisualizationOption.ALL else VisualizationOption.NOT_CONCLUDED
+                        sortOrder = it.sortOrder,
+                        visualizationOption = it.showAll
                     )
                 }
             }

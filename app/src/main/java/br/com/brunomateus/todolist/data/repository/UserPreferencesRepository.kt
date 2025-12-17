@@ -14,41 +14,38 @@ import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 
+
+data class UserSettings(val sortOrder: SortOrder, val showAll: VisualizationOption)
+
 class UserPreferencesRepository(private val dataStore: DataStore<Preferences>){
 
     private companion object PreferencesKeys {
         val SORT_ORDER = stringPreferencesKey("sort_preference")
-        val SHOW_ALL = booleanPreferencesKey("show_all")
+        val SHOW_ALL = stringPreferencesKey("show_all")
     }
 
-    val sortOrder: Flow<String> = dataStore.data
-        .catch { defaultHandler(it) }
+    val userSettings: Flow<UserSettings> = dataStore.data
+        .catch { exception ->
+            UserSettings(sortOrder = SortOrder.NONE, showAll = VisualizationOption.ALL)
+        }
         .map { preferences ->
-            preferences[PreferencesKeys.SORT_ORDER] ?: SortOrder.NONE.name
+            val sort = preferences[SORT_ORDER]
+            val showAll = preferences[SHOW_ALL]
+            UserSettings(
+                sortOrder = if (sort != null) SortOrder.valueOf(sort) else SortOrder.NONE,
+                showAll = if (showAll != null) VisualizationOption.valueOf(showAll) else VisualizationOption.ALL
+            )
         }
 
-    val showAll: Flow<Boolean> = dataStore.data
-        .catch { defaultHandler(it) }
-        .map { preferences ->
-            preferences[PreferencesKeys.SHOW_ALL] ?: true
-        }
-
-    private suspend fun FlowCollector<Preferences>.defaultHandler(throwable: Throwable) {
-        if (throwable is IOException) {
-            emit(emptyPreferences())
-        } else {
-            throw throwable
-        }
-    }
     suspend fun changeOrder(newOrder: SortOrder) {
         dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SORT_ORDER] = newOrder.name
+            preferences[SORT_ORDER] = newOrder.name
         }
     }
 
     suspend fun toggleCompleteness(visualizationOption: VisualizationOption) {
         dataStore.edit { preferences ->
-            preferences[PreferencesKeys.SHOW_ALL] = visualizationOption == VisualizationOption.ALL
+            preferences[SHOW_ALL] = visualizationOption.name
         }
     }
 }
