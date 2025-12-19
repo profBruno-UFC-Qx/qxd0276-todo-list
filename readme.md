@@ -1,12 +1,13 @@
 # To-Do List App com Arquitetura Reativa
 
-Este é um aplicativo de lista de tarefas (To-Do List) desenvolvido com Jetpack Compose. Ele serve como um projeto de estudo para demonstrar uma arquitetura Android moderna e reativa, utilizando componentes como **ViewModel**, **Room**, **Kotlin Flow**, e operadores avançados como **`flatMapLatest`** e **`combine`**.
+Este é um aplicativo de lista de tarefas (To-Do List) desenvolvido com Jetpack Compose. Ele serve como um projeto de estudo para demonstrar uma arquitetura Android moderna e reativa, utilizando componentes como **ViewModel**, **Room**, **DataStore**, **Kotlin Flow**, e operadores avançados como **`flatMapLatest`** e **`combine`**.
 
 ## Funcionalidades
 
 - **CRUD de Tarefas:** Adicionar, deletar e atualizar tarefas.
 - **Persistência de Dados:** As tarefas são salvas localmente em um banco de dados SQLite usando a biblioteca Room.
-- **Interface Reativa:** A UI é atualizada automaticamente em resposta a qualquer alteração nos dados.
+- **Preferências do Usuário com DataStore:** As opções de filtro e ordenação são salvas de forma assíncrona usando **Jetpack DataStore**.
+- **Interface Reativa:** A UI é atualizada automaticamente em resposta a qualquer alteração nos dados ou nas preferências do usuário.
 - **Filtragem Dinâmica:** Filtre tarefas por categoria ou por status (concluídas ou não).
 - **Ordenação Dinâmica:** Ordene as tarefas por ordem alfabética (A-Z, Z-A) ou pela ordem de criação.
 - **Gestos de Swipe:** Deslize um item para a direita para marcá-lo como concluído, ou para a esquerda para deletá-lo.
@@ -21,73 +22,70 @@ O projeto segue uma arquitetura baseada nos princípios de **Fluxo de Dados Unid
 
 O fluxo geral de dados é:
 
-**UI (Compose) → `ViewModel` → `Repository` → `DAO` (Room) → `Flow` → UI**
+**UI (Compose) → `ViewModel` → `Repository` → (`DAO` (Room) / `DataStore`) → `Flow` → UI**
 
-### 1. Camada de Dados: Room e Repository
+### 1. Camada de Dados: Room, DataStore e Repository
 
-A persistência de dados é gerenciada pela biblioteca **Room**, que fornece uma abstração sobre o SQLite, e pelo **Padrão Repository**, que isola a fonte de dados do resto do aplicativo.
+A persistência de dados é gerenciada por duas bibliotecas principais:
+-   **Room:** Para dados estruturados (a lista de tarefas).
+-   **DataStore:** Para dados simples de chave-valor (as preferências do usuário).
 
--   **`@Entity` (`Task.kt`):** A classe `Task` é anotada como `@Entity` para que o Room saiba como mapeá-la para uma tabela no banco de dados.
--   **`@Dao` (`TaskDao.kt`):** A interface `TaskDao` define como acessamos os dados. O mais importante é que seus métodos de consulta retornam um **`Flow<List<Task>>`**. Isso significa que qualquer alteração na tabela de tarefas (insert, update, delete) emitirá automaticamente a nova lista para quem estiver "ouvindo", tornando a base de dados reativa.
+O **Padrão Repository** isola essas fontes de dados do resto do aplicativo.
+
+-   **`@Dao` (`TaskDao.kt`):** A interface `TaskDao` define como acessamos as tarefas. Seus métodos de consulta retornam um **`Flow<List<Task>>`**, tornando a base de dados reativa a qualquer alteração.
+
+-   **`DataStore` (`UserPreferencesRepository.kt`):** Substituindo o antigo `SharedPreferences`, o **DataStore** é usado para salvar as preferências de filtro e ordenação do usuário.
+
+    **Por que usar DataStore em vez de SharedPreferences?**
+    1.  **Segurança de Tipo e Nulabilidade:** O DataStore usa `Preferences` com chaves tipadas, evitando erros de `ClassCastException` em tempo de execução.
+    2.  **API Assíncrona com Flow:** Ele expõe os dados através de um `Flow<Preferences>`, o que o integra perfeitamente a uma arquitetura reativa com corrotinas. Isso elimina o risco de bloquear a thread principal, um problema comum com as chamadas síncronas do `SharedPreferences`.
+    3.  **Resiliência a Erros:** A API de transação do DataStore garante a consistência dos dados, mesmo que o processo do app seja interrompido durante uma escrita.
 
     ```kotlin
-    // TaskDao.kt
-    @Query("SELECT * FROM tasks WHERE ...")
-    fun getAll(...): Flow<List<Task>>
+    // UserPreferencesRepository.kt
+    val userPreferencesFlow: Flow<UserPreferences> = dataStore.data
+        .catch { exception -> ... }
+        .map { preferences ->
+            // Mapeia as preferências para um objeto de dados
+        }
     ```
 
--   **`Repository` (`TaskRepository.kt`):** Atua como um intermediário entre o `ViewModel` e a fonte de dados (`TaskDao`). Ele traduz os filtros solicitados pelo `ViewModel` em chamadas concretas ao DAO. Essa camada de abstração facilita a manutenção e os testes, e permitiria, no futuro, adicionar outras fontes de dados (como uma API remota) sem impactar o `ViewModel`.
+-   **`Repository` (`TaskRepository.kt`):** Atua como um intermediário entre o `ViewModel` e as fontes de dados (`TaskDao` e `UserPreferencesRepository`). Ele combina os dados das tarefas com as preferências do usuário para fornecer a lista filtrada e ordenada.
 
 ### 2. ViewModel: O Maestro da Reatividade
 
-O `TodoListViewModel` é o cérebro do aplicativo. Ele mantém o estado da UI e reage aos eventos do usuário, orquestrando a busca de dados de forma eficiente.
+O `TodoListViewModel` orquestra a busca e a combinação de dados de forma eficiente.
 
--   **`StateFlow` para o Estado da UI (`_uiState`):** Um `MutableStateFlow` é usado para armazenar todo o estado relacionado à UI: a ordem de classificação (`sortOrder`), o filtro de visualização (`visualizationOption`) e as categorias selecionadas (`selectedCategories`).
+-   **`StateFlow` para o Estado da UI (`_uiState`):** Um `MutableStateFlow` armazena o estado volátil da UI, como o status da tela e as categorias selecionadas.
 
-    ```kotlin
-    // TodoListViewModel.kt
-    private val _uiState = MutableStateFlow(TodoListUiState())
-    ```
-
--   **`flatMapLatest`: Consultas Dinâmicas e Eficientes:** Este é o conceito central para a reatividade da tela. O `flatMapLatest` é um operador de `Flow` que "escuta" as mudanças no `_uiState` e, a cada nova mudança, **cancela a consulta anterior ao banco de dados e inicia uma nova** com os filtros atualizados.
-
-Para entender melhor como funciona o `flatMapLatest` e outra funções relacionadas ao tipo `Flow`, recomendo a leitura do [seguinte artigo](https://codeint.medium.com/flatmapconcat-flatmapmerge-and-flatmaplatest-internal-working-de1a7c3e0c63).
-
+-   **`flatMapLatest`: Consultas Dinâmicas e Eficientes:** O `ViewModel` agora combina dois `Flows`: um vindo do `UserPreferencesRepository` (preferências do usuário) e outro vindo das ações do usuário na UI. O `flatMapLatest` escuta as mudanças em ambos e, a cada nova alteração, **cancela a consulta anterior ao banco de dados e inicia uma nova** com os filtros e a ordenação atualizados.
 
     ```kotlin
     // TodoListViewModel.kt
     @OptIn(ExperimentalCoroutinesApi::class)
-    val tasks = _uiState.flatMapLatest { uiState ->
+    val tasks = combine(
+        _uiState,
+        userPreferencesRepository.userPreferencesFlow
+    ) { uiState, userPreferences ->
+        // Objeto que contém os filtros combinados
+        Pair(uiState, userPreferences)
+    }.flatMapLatest { (uiState, userPreferences) ->
         taskRepository.getAll(
-            sortOrder = uiState.sortOrder,
-            visualization = uiState.visualizationOption,
+            sortOrder = userPreferences.sortOrder,
+            visualization = userPreferences.visualization,
             categories = uiState.selectedCategories
         )
     }.stateIn(...)
     ```
 
     **Como funciona?**
-    1.  O `_uiState` emite um novo valor sempre que o usuário altera um filtro.
-    2.  O `flatMapLatest` recebe esse novo `uiState` e chama `taskRepository.getAll(...)`, que retorna um novo `Flow` com a consulta SQL atualizada.
-    3.  Crucialmente, ele **cancela a coleta do Flow anterior**, garantindo que apenas a consulta mais recente (e relevante) esteja ativa. Isso evita o processamento de dados obsoletos e economiza recursos.
-
--   **`combine`: Derivando o Estado Final:** O operador `combine` é usado para "combinar" múltiplos `Flows` e derivar um estado final. No `ViewModel`, ele é usado para determinar o status geral da UI (`TodoListState`), como, por exemplo, se a tela deve exibir uma mensagem de "Nenhuma tarefa encontrada" ou "Todas as tarefas concluídas".
-
-    ```kotlin
-    // TodoListViewModel.kt
-    val uiState = combine(allTasksFromDb, tasks, _uiState) { allTasks, filteredTasks, uiState ->
-        when {
-            allTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTaskRegistered)
-            filteredTasks.isEmpty() -> uiState.copy(status = TodoListState.NoTasksToShow)
-            // ... outras condições
-            else -> uiState.copy(status = TodoListState.TaskToShow)
-        }
-    }.stateIn(...)
-    ```
+    1.  O `combine` reage a qualquer mudança, seja no `_uiState` (ex: usuário seleciona uma nova categoria) ou no `userPreferencesFlow` (ex: `DataStore` emite as preferências salvas).
+    2.  O `flatMapLatest` recebe os filtros mais recentes e chama `taskRepository.getAll(...)`, que retorna um novo `Flow` com a consulta SQL atualizada.
+    3.  Crucialmente, ele **cancela a coleta do Flow anterior**, garantindo que apenas a consulta mais recente esteja ativa. Isso evita o processamento de dados obsoletos e economiza recursos.
 
 ### 3. UI (Compose): Consumindo o Estado
 
-A UI, construída com Jetpack Compose, é puramente declarativa. Ela apenas "coleta" o estado exposto pelo `ViewModel` usando `collectAsState()` e se redesenha quando o estado muda.
+A UI, construída com Jetpack Compose, permanece puramente declarativa. Ela coleta o estado exposto pelo `ViewModel` usando `collectAsState()` e se redesenha quando o estado muda.
 
 ```kotlin
 // MainActivity.kt
@@ -97,5 +95,4 @@ val tasks by viewModel.tasks.collectAsState()
 // A UI usa 'tasks' e 'todolistUiState' para se desenhar.
 TodoList(tasks = tasks, ...)
 ```
-
-Graças a essa arquitetura, a UI não precisa saber *como* buscar ou filtrar os dados; ela apenas exibe o estado mais recente fornecido pelo `ViewModel`, resultando em um código mais limpo, desacoplado e fácil de testar.
+Graças a essa arquitetura, a UI não precisa saber *como* buscar, filtrar ou salvar preferências; ela apenas exibe o estado mais recente fornecido pelo `ViewModel`, resultando em um código limpo, desacoplado e fácil de testar.

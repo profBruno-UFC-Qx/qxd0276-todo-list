@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import br.com.brunomateus.todolist.data.AppDatabase
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.data.repository.TaskRepository
+import br.com.brunomateus.todolist.data.repository.UserPreferencesRepository
+import br.com.brunomateus.todolist.dataStore
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -20,7 +22,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class TodoListViewModel(
-    private val taskRepository: TaskRepository
+    private val taskRepository: TaskRepository,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TodoListUiState())
@@ -31,6 +34,19 @@ class TodoListViewModel(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    init {
+        viewModelScope.launch {
+            userPreferencesRepository.userSettings.collect {
+                _uiState.update { currentState ->
+                    currentState.copy(
+                        sortOrder = it.sortOrder,
+                        visualizationOption = it.showAll
+                    )
+                }
+            }
+        }
+    }
 
     @OptIn(ExperimentalCoroutinesApi::class)
     val tasks = _uiState.flatMapLatest { uiState ->
@@ -72,9 +88,9 @@ class TodoListViewModel(
     )
 
     fun changeVisualization() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                visualizationOption = when (_uiState.value.visualizationOption) {
+        viewModelScope.launch {
+            userPreferencesRepository.toggleCompleteness(
+                when (_uiState.value.visualizationOption) {
                     VisualizationOption.ALL -> VisualizationOption.NOT_CONCLUDED
                     VisualizationOption.NOT_CONCLUDED -> VisualizationOption.ALL
                 }
@@ -93,9 +109,9 @@ class TodoListViewModel(
     }
 
     fun sort() {
-        _uiState.update { currentState ->
-            currentState.copy(
-                sortOrder = when (_uiState.value.sortOrder) {
+        viewModelScope.launch {
+            userPreferencesRepository.changeOrder(
+                when (_uiState.value.sortOrder) {
                     SortOrder.NONE -> SortOrder.ASC
                     SortOrder.ASC -> SortOrder.DESC
                     SortOrder.DESC -> SortOrder.NONE
@@ -161,6 +177,7 @@ class TodoListViewModelFactory(private val context: Context) : ViewModelProvider
         val db = AppDatabase.getInstance(context)
         val dao = db.taskDao()
         val repo = TaskRepository(dao)
-        return TodoListViewModel(repo) as T
+        val dataStore = UserPreferencesRepository(context.dataStore)
+        return TodoListViewModel(taskRepository = repo, userPreferencesRepository = dataStore) as T
     }
 }
