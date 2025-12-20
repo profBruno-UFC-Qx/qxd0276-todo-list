@@ -1,98 +1,95 @@
 # To-Do List App com Arquitetura Reativa
 
-Este é um aplicativo de lista de tarefas (To-Do List) desenvolvido com Jetpack Compose. Ele serve como um projeto de estudo para demonstrar uma arquitetura Android moderna e reativa, utilizando componentes como **ViewModel**, **Room**, **DataStore**, **Kotlin Flow**, e operadores avançados como **`flatMapLatest`** e **`combine`**.
+Este é um aplicativo de lista de tarefas (To-Do List) desenvolvido com Jetpack Compose. Ele serve como um projeto de estudo para demonstrar uma arquitetura Android moderna e reativa, utilizando componentes como **ViewModel**, **Room**, **DataStore**, **Kotlin Flow** e **Koin** para injeção de dependência.
 
 ## Funcionalidades
 
 - **CRUD de Tarefas:** Adicionar, deletar e atualizar tarefas.
 - **Persistência de Dados:** As tarefas são salvas localmente em um banco de dados SQLite usando a biblioteca Room.
 - **Preferências do Usuário com DataStore:** As opções de filtro e ordenação são salvas de forma assíncrona usando **Jetpack DataStore**.
+- **Injeção de Dependência com Koin:** Gerenciamento centralizado das dependências do app, facilitando testes e manutenção.
 - **Interface Reativa:** A UI é atualizada automaticamente em resposta a qualquer alteração nos dados ou nas preferências do usuário.
-- **Filtragem Dinâmica:** Filtre tarefas por categoria ou por status (concluídas ou não).
-- **Ordenação Dinâmica:** Ordene as tarefas por ordem alfabética (A-Z, Z-A) ou pela ordem de criação.
+- **Filtragem e Ordenação Dinâmica:** Filtre e ordene as tarefas com as preferências salvas entre as sessões.
 - **Gestos de Swipe:** Deslize um item para a direita para marcá-lo como concluído, ou para a esquerda para deletá-lo.
 - **Seleção Múltipla:** Delete várias tarefas de uma só vez.
-- **Feedback Visual:** Barra de progresso animada e animações na lista.
 
 ---
 
 ## Arquitetura e Conceitos Aplicados
 
-O projeto segue uma arquitetura baseada nos princípios de **Fluxo de Dados Unidirecional (UDF)**, onde o estado flui do `ViewModel` para a UI, e os eventos fluem da UI para o `ViewModel`. Isso torna o app mais previsível e fácil de depurar.
+O projeto segue uma arquitetura baseada em **Fluxo de Dados Unidirecional (UDF)** e **Injeção de Dependência (DI)**. O Koin é responsável por criar e fornecer as instâncias de cada componente (`Repository`, `ViewModel`, etc.), enquanto o estado flui do `ViewModel` para a UI, e os eventos fluem no sentido contrário.
 
 O fluxo geral de dados é:
 
 **UI (Compose) → `ViewModel` → `Repository` → (`DAO` (Room) / `DataStore`) → `Flow` → UI**
 
-### 1. Camada de Dados: Room, DataStore e Repository
+### 1. Injeção de Dependência com Koin
 
-A persistência de dados é gerenciada por duas bibliotecas principais:
--   **Room:** Para dados estruturados (a lista de tarefas).
--   **DataStore:** Para dados simples de chave-valor (as preferências do usuário).
+O Koin é um framework de injeção de dependência pragmático e leve para Kotlin. Ele nos ajuda a desacoplar as classes, fornecendo suas dependências em vez de deixá-las criá-las.
 
-O **Padrão Repository** isola essas fontes de dados do resto do aplicativo.
+**Por que usar Koin?**
+1.  **Simplicidade e Clareza:** A definição das dependências é feita em Kotlin puro usando uma DSL (Domain-Specific Language) simples e legível, sem a necessidade de anotações ou geração de código.
+2.  **Desacoplamento:** As classes (como o `ViewModel`) não precisam saber como construir suas dependências (como o `Repository`). Elas simplesmente as recebem como parâmetros no construtor. Isso torna o código mais modular.
+3.  **Facilidade de Testes:** Em testes unitários ou de instrumentação, podemos facilmente substituir as dependências reais por implementações falsas (`fakes`) ou `mocks`, permitindo testar cada componente de forma isolada.
 
--   **`@Dao` (`TaskDao.kt`):** A interface `TaskDao` define como acessamos as tarefas. Seus métodos de consulta retornam um **`Flow<List<Task>>`**, tornando a base de dados reativa a qualquer alteração.
+No projeto, os módulos do Koin são definidos em `AppModule.kt`, onde declaramos como criar cada parte do aplicativo:
 
--   **`DataStore` (`UserPreferencesRepository.kt`):** Substituindo o antigo `SharedPreferences`, o **DataStore** é usado para salvar as preferências de filtro e ordenação do usuário.
+```kotlin
+// AppModule.kt
+val appModule = module {
+    // Singleton do Database e DAOs
+    single { Room.databaseBuilder(...).build() }
+    single { get<AppDatabase>().taskDao() }
 
-    **Por que usar DataStore em vez de SharedPreferences?**
-    1.  **Segurança de Tipo e Nulabilidade:** O DataStore usa `Preferences` com chaves tipadas, evitando erros de `ClassCastException` em tempo de execução.
-    2.  **API Assíncrona com Flow:** Ele expõe os dados através de um `Flow<Preferences>`, o que o integra perfeitamente a uma arquitetura reativa com corrotinas. Isso elimina o risco de bloquear a thread principal, um problema comum com as chamadas síncronas do `SharedPreferences`.
-    3.  **Resiliência a Erros:** A API de transação do DataStore garante a consistência dos dados, mesmo que o processo do app seja interrompido durante uma escrita.
+    // Singleton dos Repositories
+    single { UserPreferencesRepository(androidContext()) }
+    single { TaskRepository(get()) } // Koin injeta o TaskDao aqui
 
-    ```kotlin
-    // UserPreferencesRepository.kt
-    val userPreferencesFlow: Flow<UserPreferences> = dataStore.data
-        .catch { exception -> ... }
-        .map { preferences ->
-            // Mapeia as preferências para um objeto de dados
-        }
-    ```
+    // Definição do ViewModel
+    viewModel { TodoListViewModel(get(), get()) } // Koin injeta os dois repositories
+}
+```
 
--   **`Repository` (`TaskRepository.kt`):** Atua como um intermediário entre o `ViewModel` e as fontes de dados (`TaskDao` e `UserPreferencesRepository`). Ele combina os dados das tarefas com as preferências do usuário para fornecer a lista filtrada e ordenada.
+### 2. Camada de Dados: Room, DataStore e Repository
 
-### 2. ViewModel: O Maestro da Reatividade
+A persistência de dados é gerenciada por Room (dados estruturados) e DataStore (preferências do usuário). O **Padrão Repository** isola essas fontes de dados do resto do aplicativo.
 
-O `TodoListViewModel` orquestra a busca e a combinação de dados de forma eficiente.
+-   **`@Dao` (`TaskDao.kt`):** Retorna `Flow<List<Task>>` para tornar a base de dados reativa.
 
--   **`StateFlow` para o Estado da UI (`_uiState`):** Um `MutableStateFlow` armazena o estado volátil da UI, como o status da tela e as categorias selecionadas.
+-   **`DataStore` (`UserPreferencesRepository.kt`):** Salva as preferências de filtro e ordenação usando uma API assíncrona baseada em `Flow`, garantindo segurança de tipo e evitando bloqueios na thread principal.
 
--   **`flatMapLatest`: Consultas Dinâmicas e Eficientes:** O `ViewModel` agora combina dois `Flows`: um vindo do `UserPreferencesRepository` (preferências do usuário) e outro vindo das ações do usuário na UI. O `flatMapLatest` escuta as mudanças em ambos e, a cada nova alteração, **cancela a consulta anterior ao banco de dados e inicia uma nova** com os filtros e a ordenação atualizados.
+-   **`Repository` (`TaskRepository.kt`):** Atua como um intermediário, sendo responsável por obter os dados do DAO.
+
+### 3. ViewModel: O Maestro da Reatividade
+
+O `TodoListViewModel` recebe suas dependências (`TaskRepository` e `UserPreferencesRepository`) via injeção de dependência pelo Koin. Ele combina os `Flows` vindos dos repositórios para construir o estado da UI.
+
+-   **`flatMapLatest`: Consultas Dinâmicas e Eficientes:** O `ViewModel` combina o `Flow` de preferências do usuário com as ações na UI. O `flatMapLatest` escuta as mudanças e, a cada nova alteração, inicia uma nova consulta ao banco de dados com os filtros atualizados, cancelando a anterior para economizar recursos.
 
     ```kotlin
     // TodoListViewModel.kt
     @OptIn(ExperimentalCoroutinesApi::class)
-    val tasks = combine(
-        _uiState,
-        userPreferencesRepository.userPreferencesFlow
-    ) { uiState, userPreferences ->
-        // Objeto que contém os filtros combinados
-        Pair(uiState, userPreferences)
-    }.flatMapLatest { (uiState, userPreferences) ->
-        taskRepository.getAll(
-            sortOrder = userPreferences.sortOrder,
-            visualization = userPreferences.visualization,
-            categories = uiState.selectedCategories
-        )
-    }.stateIn(...)
+    val tasks = combine(...) { ... }
+        .flatMapLatest { (uiState, userPreferences) ->
+            taskRepository.getAll(
+                sortOrder = userPreferences.sortOrder,
+                // ...
+            )
+        }.stateIn(...)
     ```
 
-    **Como funciona?**
-    1.  O `combine` reage a qualquer mudança, seja no `_uiState` (ex: usuário seleciona uma nova categoria) ou no `userPreferencesFlow` (ex: `DataStore` emite as preferências salvas).
-    2.  O `flatMapLatest` recebe os filtros mais recentes e chama `taskRepository.getAll(...)`, que retorna um novo `Flow` com a consulta SQL atualizada.
-    3.  Crucialmente, ele **cancela a coleta do Flow anterior**, garantindo que apenas a consulta mais recente esteja ativa. Isso evita o processamento de dados obsoletos e economiza recursos.
+### 4. UI (Compose): Consumindo o Estado
 
-### 3. UI (Compose): Consumindo o Estado
-
-A UI, construída com Jetpack Compose, permanece puramente declarativa. Ela coleta o estado exposto pelo `ViewModel` usando `collectAsState()` e se redesenha quando o estado muda.
+A UI, construída com Jetpack Compose, permanece puramente declarativa. A grande mudança aqui é como obtemos a instância do `ViewModel`: em vez de usar `viewModel()`, usamos `koinViewModel()`.
 
 ```kotlin
 // MainActivity.kt
+val viewModel: TodoListViewModel = koinViewModel()
 val todolistUiState by viewModel.uiState.collectAsState()
 val tasks by viewModel.tasks.collectAsState()
 
 // A UI usa 'tasks' e 'todolistUiState' para se desenhar.
 TodoList(tasks = tasks, ...)
 ```
-Graças a essa arquitetura, a UI não precisa saber *como* buscar, filtrar ou salvar preferências; ela apenas exibe o estado mais recente fornecido pelo `ViewModel`, resultando em um código limpo, desacoplado e fácil de testar.
+
+O `koinViewModel()` busca a instância do `ViewModel` gerenciada pelo Koin, que já vem com todas as suas dependências (`Repositories`) prontas para uso. Isso conclui o ciclo de injeção de dependência, resultando em um código mais limpo, desacoplado e fácil de testar.
