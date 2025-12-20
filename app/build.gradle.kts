@@ -54,8 +54,6 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.datastore.preferences)
-    implementation(libs.io.koin.android)
-    implementation(libs.io.koin.androidx.compose)
     ksp(libs.androidx.room.compiler)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

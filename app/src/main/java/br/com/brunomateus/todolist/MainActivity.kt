@@ -1,5 +1,6 @@
 package br.com.brunomateus.todolist
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,6 +37,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -45,15 +47,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.ui.TodoListState
 import br.com.brunomateus.todolist.ui.TodoListViewModel
+import br.com.brunomateus.todolist.ui.TodoListViewModelFactory
 import br.com.brunomateus.todolist.ui.VisualizationOption
 import br.com.brunomateus.todolist.ui.composable.AddTaskDialog
 import br.com.brunomateus.todolist.ui.composable.TodoList
@@ -62,8 +70,8 @@ import br.com.brunomateus.todolist.ui.screen.NoTasksFoundScreen
 import br.com.brunomateus.todolist.ui.screen.NoTasksScreen
 import br.com.brunomateus.todolist.ui.theme.TodolistTheme
 import kotlinx.coroutines.launch
-import org.koin.androidx.compose.koinViewModel
 
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -198,7 +206,12 @@ fun GoToTopFloatActionButton(
 
 @Composable
 fun TodoMainScreen(
-    modifier: Modifier = Modifier, viewModel: TodoListViewModel = koinViewModel()) {
+    modifier: Modifier = Modifier, viewModel: TodoListViewModel = viewModel(
+        factory = TodoListViewModelFactory(
+            LocalContext.current
+        )
+    )
+) {
 
     val todolistUiState by viewModel.uiState.collectAsStateWithLifecycle()
     val completedTasks by viewModel.completedTask.collectAsStateWithLifecycle()

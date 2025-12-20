@@ -1,11 +1,14 @@
 package br.com.brunomateus.todolist.ui
 
-
+import android.content.Context
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import br.com.brunomateus.todolist.data.AppDatabase
 import br.com.brunomateus.todolist.data.dao.SortOrder
 import br.com.brunomateus.todolist.data.repository.TaskRepository
 import br.com.brunomateus.todolist.data.repository.UserPreferencesRepository
+import br.com.brunomateus.todolist.dataStore
 import br.com.brunomateus.todolist.model.Category
 import br.com.brunomateus.todolist.model.Task
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -165,5 +168,16 @@ class TodoListViewModel(
         viewModelScope.launch {
             taskRepository.toggleComplete(task)
         }
+    }
+}
+
+
+class TodoListViewModelFactory(private val context: Context) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        val db = AppDatabase.getInstance(context)
+        val dao = db.taskDao()
+        val repo = TaskRepository(dao)
+        val dataStore = UserPreferencesRepository(context.dataStore)
+        return TodoListViewModel(taskRepository = repo, userPreferencesRepository = dataStore) as T
     }
 }
